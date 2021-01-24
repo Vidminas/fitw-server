@@ -7,27 +7,42 @@
 import app from "./app";
 const debug = require("debug")("fitw-server:server");
 import { createServer } from "http";
+import { Server, Socket } from "socket.io";
 
 /**
  * Get port from environment and store in Express.
  */
 
-const port = normalizePort(process.env.PORT || "3000");
+const port = normalizePort(process.env.PORT || "8081");
 app.set("port", port);
 
 /**
  * Create HTTP server.
  */
 
-const server = createServer(app);
+const httpServer = createServer(app);
+
+const io = new Server(httpServer, {
+  serveClient: false,
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"],
+  },
+});
+io.on("connection", (socket: Socket) => {
+  debug("a user connected");
+  socket.on("disconnect", () => {
+    debug("user disconnected");
+  });
+});
 
 /**
  * Listen on provided port, on all network interfaces.
  */
 
-server.listen(port);
-server.on("error", onError);
-server.on("listening", onListening);
+httpServer.listen(port);
+httpServer.on("error", onError);
+httpServer.on("listening", onListening);
 
 /**
  * Normalize a port into a number, string, or false.
@@ -80,7 +95,7 @@ function onError(error: { syscall: string; code: any }) {
  */
 
 function onListening() {
-  const addr = server.address();
+  const addr = httpServer.address();
   const bind = typeof addr === "string" ? "pipe " + addr : "port " + addr!.port;
   debug("Listening on " + bind);
 }
