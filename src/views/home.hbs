@@ -8,5 +8,13 @@
     <a href="https://fitw.azurewebsites.net/">https://fitw.azurewebsites.net/</a>
 </p>
 <p>
-    There are {{players}} currently connected players.
+    There are {{numPlayers}} currently connected players.
 </p>
+<div>
+    <label>Server messages:</label>
+    <ul>
+        {{#each messages}}
+        <li>[{{date}}] {{this.userId}}: {{this.text}}</li>
+        {{/each}}
+    </ul>
+</div>

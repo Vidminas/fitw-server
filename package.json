@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "nodemon src/server.ts",
-    "dev": "env DEBUG=fitw-server:* yarn start",
+    "start": "ts-node src/server.ts",
+    "dev": "env DEBUG=fitw-server:* nodemon src/server.ts",
     "build": "tsc --project ./"
   },
   "dependencies": {

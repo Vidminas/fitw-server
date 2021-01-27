@@ -8,7 +8,7 @@ import app from "./app";
 const debug = require("debug")("fitw-server:server");
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
-import { addPlayer, removePlayer } from "./routes/index";
+import registerPlayerHandlers from "./playerHandler";
 
 /**
  * Get port from environment and store in Express.
@@ -28,19 +28,14 @@ const io = new Server(httpServer, {
   cors: {
     origin: process.env.DEBUG
       ? "http://localhost:3000"
-      : `https://fitw.azurewebsites.net:${process.env.PORT || 8080}`,
+      : "https://fitw.azurewebsites.net",
     methods: ["GET", "POST"],
   },
   // https://docs.microsoft.com/en-us/azure/app-service/faq-app-service-linux
   perMessageDeflate: false,
 });
 io.on("connection", (socket: Socket) => {
-  debug("a user connected");
-  addPlayer();
-  socket.on("disconnect", () => {
-    debug("user disconnected");
-    removePlayer();
-  });
+  registerPlayerHandlers(io, socket);
 });
 
 /**

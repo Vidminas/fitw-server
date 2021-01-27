@@ -1,19 +1,10 @@
 import { Router } from "express";
+import { numPlayers, messages } from "../playerHandler";
 const router = Router();
-
-let numPlayers: number = 0;
-
-export const addPlayer = () => {
-  numPlayers++;
-};
-
-export const removePlayer = () => {
-  numPlayers--;
-};
 
 /* GET home page. */
 router.get("/", function (req, res, next) {
-  res.render("home", { players: numPlayers });
+  res.render("home", { numPlayers, messages });
 });
 
 export default router;
