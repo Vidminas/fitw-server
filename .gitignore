@@ -56,3 +56,9 @@ typings/
 
 # dotenv environment variables file
 .env
+
+# Azure deployment config
+.deployment
+
+# VSCode project configuration
+.vscode/
