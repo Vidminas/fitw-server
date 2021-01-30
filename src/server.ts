@@ -32,9 +32,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   serveClient: false,
   cors: {
-    origin: process.env.DEBUG
-      ? "http://localhost:3000"
-      : "https://fitw.azurewebsites.net",
+    origin: process.env.CORS_ORIGIN,
     methods: ["GET", "POST"],
   },
   // https://docs.microsoft.com/en-us/azure/app-service/faq-app-service-linux
