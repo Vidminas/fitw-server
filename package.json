@@ -3,19 +3,23 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "ts-node src/server.ts",
-    "dev": "env DEBUG=fitw-server:* nodemon src/server.ts",
+    "start": "env NODE_ENV=prod ts-node src/server.ts",
+    "dev": "env NODE_ENV=dev nodemon src/server.ts",
+    "devtrace": "env NODE_ENV=dev node --trace-warnings -r ts-node/register src/server.ts",
     "build": "tsc --project ./"
   },
   "dependencies": {
     "debug": "~2.6.9",
+    "dotenv": "^8.2.0",
     "express": "~4.16.1",
     "express-handlebars": "^5.2.0",
+    "mysql": "^2.18.1",
     "socket.io": "^3.1.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.11",
     "@types/express-handlebars": "^3.1.0",
+    "@types/mysql": "^2.15.17",
     "@types/node": "^14.14.22",
     "nodemon": "^2.0.7",
     "ts-node": "^9.1.1",

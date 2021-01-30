@@ -1,11 +1,17 @@
 #!/usr/bin/env node
 
 /**
+ * Setup environment variables
+ */
+import dotenv from "dotenv";
+const node_env = process.env.NODE_ENV || "prod";
+dotenv.config({ path: `.env.${node_env}` });
+
+/**
  * Module dependencies.
  */
-
-import app from "./app";
 const debug = require("debug")("fitw-server:server");
+import app from "./app";
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
 import registerPlayerHandlers from "./playerHandler";
