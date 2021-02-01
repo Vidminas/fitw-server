@@ -36,43 +36,45 @@ export const queryDB = (query: string): Promise<any> => {
   });
 };
 
-const initializeDB = () => {
-  debug(`Initialising database`);
-  const connection = mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-  });
+export const initializeDB = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    debug(`Initialising database`);
+    const connection = mysql.createConnection({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+    });
 
-  connection.connect((error) => {
-    if (error) {
-      throw error;
-    }
-
-    const qCreateDB = `CREATE DATABASE IF NOT EXISTS ${process.env.DB_DATABASE}`;
-    connection.query(qCreateDB, (error, _result, _fields) => {
+    connection.connect((error) => {
       if (error) {
-        throw error;
+        reject(error);
       }
-      debug(`Ensured database ${process.env.DB_DATABASE} exists`);
-    });
 
-    connection.end((error) => {
-      if (error) {
-        throw error;
-      }
+      const qCreateDB = `CREATE DATABASE IF NOT EXISTS ${process.env.DB_DATABASE}`;
+      connection.query(qCreateDB, (error, _result, _fields) => {
+        if (error) {
+          reject(error);
+        }
+        debug(`Ensured database ${process.env.DB_DATABASE} exists`);
+      });
+
+      connection.end((error) => {
+        if (error) {
+          reject(error);
+        }
+        debug("Ensuring table USERS exists");
+        queryDB(`CREATE TABLE IF NOT EXISTS USERS(
+          id INT PRIMARY KEY AUTO_INCREMENT,
+          name VARCHAR(255) NOT NULL
+        )`)
+          .then(() => {
+            debug("Database initialised");
+            resolve();
+          })
+          .catch((error) => {
+            reject(error);
+          });
+      });
     });
   });
-
-  debug("Ensuring table USERS exists");
-  queryDB(`CREATE TABLE IF NOT EXISTS USERS(
-      id INT PRIMARY KEY AUTO_INCREMENT,
-      name VARCHAR(255) NOT NULL
-    )`)
-    .then(debug("Database initialised"))
-    .catch((error) => {
-      throw error;
-    });
 };
-
-initializeDB();

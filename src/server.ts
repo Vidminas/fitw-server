@@ -11,10 +11,11 @@ dotenv.config({ path: `.env.${node_env}` });
  * Module dependencies.
  */
 const debug = require("debug")("fitw-server:server");
-import app from "./app";
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
+import app from "./app";
 import registerPlayerHandlers from "./playerHandler";
+import { initializeDB } from "./mysql";
 
 /**
  * Get port from environment and store in Express.
@@ -49,6 +50,14 @@ io.on("connection", (socket: Socket) => {
 httpServer.listen(port);
 httpServer.on("error", onError);
 httpServer.on("listening", onListening);
+
+/**
+ * Test connection to the database and ensure the users table exists
+ */
+initializeDB().catch((error) => {
+  debug("Failed to initialise database because:");
+  debug(error);
+});
 
 /**
  * Normalize a port into a number, string, or false.
