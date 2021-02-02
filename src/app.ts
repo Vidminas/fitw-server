@@ -4,7 +4,7 @@ import handlebars from "express-handlebars";
 import path from "path";
 
 import indexRouter from "./routes/index";
-import usersRouter from "./routes/users";
+import userRouter from "./routes/user";
 
 const app = express();
 
@@ -29,6 +29,6 @@ app.use(
 );
 
 app.use("/", indexRouter);
-app.use("/users", usersRouter);
+app.use("/user", userRouter);
 
 export default app;

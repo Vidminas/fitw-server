@@ -15,7 +15,7 @@ import { createServer } from "http";
 import { Server, Socket } from "socket.io";
 import app from "./app";
 import registerPlayerHandlers from "./playerHandler";
-import { initializeDB } from "./mysql";
+import { initializeDB } from "./mongodb";
 
 /**
  * Get port from environment and store in Express.
@@ -54,10 +54,7 @@ httpServer.on("listening", onListening);
 /**
  * Test connection to the database and ensure the users table exists
  */
-initializeDB().catch((error) => {
-  debug("Failed to initialise database because:");
-  debug(error);
-});
+initializeDB();
 
 /**
  * Normalize a port into a number, string, or false.

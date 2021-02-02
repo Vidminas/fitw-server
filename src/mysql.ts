@@ -1,3 +1,7 @@
+/**
+ * This file is used if the backend database is a MySQL DB
+ * Not in use when MongoDB (default) is used instead
+ */
 const debug = require("debug")("fitw-server:mysql");
 import mysql from "mysql";
 
