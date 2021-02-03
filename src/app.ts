@@ -1,7 +1,9 @@
 import cors from "cors";
 import express from "express";
 import handlebars from "express-handlebars";
+import passport from "passport";
 import path from "path";
+import { authCallbackUrl, authUrl, magicLogin } from "./auth/passport";
 
 import indexRouter from "./routes/index";
 import userRouter from "./routes/user";
@@ -27,8 +29,16 @@ app.use(
     origin: process.env.CORS_ORIGIN,
   })
 );
+app.use(passport.initialize());
 
 app.use("/", indexRouter);
 app.use("/user", userRouter);
+
+// Authentication using passport and magic login
+app.post(authUrl, magicLogin.send);
+app.get(
+  authCallbackUrl,
+  passport.authenticate("magiclogin", { session: false })
+);
 
 export default app;

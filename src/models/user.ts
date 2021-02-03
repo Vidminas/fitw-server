@@ -1,15 +1,21 @@
-import { Schema, model } from "mongoose";
+import { Schema, Document, model } from "mongoose";
+
+export interface IUser extends Document {
+  emailHash: string;
+  username: string;
+  groups: [Schema.Types.ObjectId];
+  worlds: [Schema.Types.ObjectId];
+}
 
 const userSchema = new Schema(
   {
+    emailHash: {
+      type: String,
+      required: true,
+    },
     username: {
       type: String,
       unique: true,
-      required: true,
-    },
-    publicName: {
-      type: String,
-      unique: false,
       required: true,
     },
     groups: [
@@ -28,6 +34,6 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
-const User = model("User", userSchema);
+const userModel = model<IUser>("User", userSchema);
 
-export default User;
+export default userModel;

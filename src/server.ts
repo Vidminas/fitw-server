@@ -18,6 +18,11 @@ import registerPlayerHandlers from "./playerHandler";
 import { initializeDB } from "./mongodb";
 
 /**
+ * Test connection to the database and ensure the users table exists
+ */
+initializeDB();
+
+/**
  * Get port from environment and store in Express.
  */
 
@@ -50,11 +55,6 @@ io.on("connection", (socket: Socket) => {
 httpServer.listen(port);
 httpServer.on("error", onError);
 httpServer.on("listening", onListening);
-
-/**
- * Test connection to the database and ensure the users table exists
- */
-initializeDB();
 
 /**
  * Normalize a port into a number, string, or false.
