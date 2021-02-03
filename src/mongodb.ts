@@ -5,8 +5,7 @@
 const debug = require("debug")("fitw-server:mongodb");
 import mongoose from "mongoose";
 
-import User from "./models/user";
-import World from "./models/world";
+let connected = false;
 
 export const initializeDB = () => {
   return mongoose
@@ -17,13 +16,24 @@ export const initializeDB = () => {
       useCreateIndex: true,
     })
     .then(() => {
+      connected = true;
       debug("Successfully initialised MongoDB database");
     })
     .catch((error) => {
+      connected = false;
       debug("Failed to initialise database because:");
       debug(error);
     });
 };
 
-const models = { User, World };
-export default models;
+const disconnectDB = () => {
+  if (connected) {
+    mongoose.connection.close(function () {
+      debug("Disconnected from MongoDB on app termination");
+      process.exit(0);
+    });
+  }
+};
+
+// If the Node process ends, close the Mongoose connection
+process.on("SIGINT", disconnectDB).on("SIGTERM", disconnectDB);
