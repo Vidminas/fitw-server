@@ -4,6 +4,8 @@ import passport from "passport";
 import MagicLoginStrategy from "passport-magic-login";
 import sgMail from "@sendgrid/mail";
 import { verifyUser } from "./userAuth";
+import userModel, { IUser } from "../models/user";
+import { Schema } from "mongoose";
 
 const fitwEmailBanner = readFileSync("./public/FITW email banner.png").toString(
   "base64"
@@ -35,6 +37,11 @@ export const magicLogin = new MagicLoginStrategy({
   },
   verify: (payload, done) => {
     debug("Verifying new user login");
+    if (!payload.destination) {
+      debug("But the supplied POST data is invalid - link expired!");
+      return done(undefined, false, { message: "Authentication link expired" });
+    }
+
     verifyUser(payload.destination)
       .then((user) => {
         if (!user) {
@@ -55,3 +62,13 @@ export const magicLogin = new MagicLoginStrategy({
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 passport.use(magicLogin);
+
+passport.serializeUser<Schema.Types.ObjectId>((user, done) => {
+  done(null, (user as IUser).id);
+});
+
+passport.deserializeUser<Schema.Types.ObjectId>((id, done) => {
+  userModel.findById(id, (error: any, user: IUser) => {
+    done(error, user);
+  });
+});

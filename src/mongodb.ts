@@ -37,3 +37,5 @@ const disconnectDB = () => {
 
 // If the Node process ends, close the Mongoose connection
 process.on("SIGINT", disconnectDB).on("SIGTERM", disconnectDB);
+
+export const mongodb = mongoose.connection;
