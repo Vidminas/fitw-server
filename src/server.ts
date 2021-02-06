@@ -38,7 +38,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   serveClient: false,
   cors: {
-    origin: process.env.CORS_ORIGIN,
+    origin: process.env.CLIENT_URL,
     methods: ["GET", "POST"],
   },
   // https://docs.microsoft.com/en-us/azure/app-service/faq-app-service-linux

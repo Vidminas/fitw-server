@@ -4,7 +4,12 @@ import handlebars from "express-handlebars";
 import session from "express-session";
 import passport from "passport";
 import path from "path";
-import { authCallbackUrl, authUrl, magicLogin } from "./auth/passport";
+import {
+  authVerifyUrl,
+  authUrl,
+  magicLogin,
+  authenticateAndRespond,
+} from "./auth/passport";
 import { mongodb } from "./mongodb";
 
 import indexRouter from "./routes/index";
@@ -35,6 +40,7 @@ app.use(
   session({
     cookie: {
       secure: process.env.NODE_ENV !== "dev",
+      path: "/",
     },
     secret: process.env.SESSION_SECRET!,
     saveUninitialized: false,
@@ -45,7 +51,7 @@ app.use(
 // app.use(express.static(path.join(__dirname, "..", "public")));
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: process.env.CLIENT_URL,
   })
 );
 app.use(passport.initialize());
@@ -56,6 +62,6 @@ app.use("/user", userRouter);
 
 // Authentication using passport and magic login
 app.post(authUrl, magicLogin.send);
-app.get(authCallbackUrl, passport.authenticate("magiclogin"));
+app.get(authVerifyUrl, authenticateAndRespond);
 
 export default app;

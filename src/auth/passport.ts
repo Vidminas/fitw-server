@@ -6,29 +6,33 @@ import sgMail from "@sendgrid/mail";
 import { verifyUser } from "./userAuth";
 import userModel, { IUser } from "../models/user";
 import { Schema } from "mongoose";
+import { Request, Response, NextFunction } from "express";
 
 const fitwEmailBanner = readFileSync("./public/FITW email banner.png").toString(
   "base64"
 );
 
 export const authUrl = "/auth";
-export const authCallbackUrl = "/auth/callback";
+export const authVerifyUrl = "/auth/verify";
 
 export const magicLogin = new MagicLoginStrategy({
   secret: process.env.MAGIC_LINK_SECRET!,
-  callbackUrl: authCallbackUrl,
-  sendMagicLink: (destination, confirmUrl) => {
+  callbackUrl: authVerifyUrl,
+  sendMagicLink: (destination, confirmUrl, verificationCode) => {
     return sgMail
       .send({
         to: destination,
         from: process.env.SENDGRID_SENDER!,
         subject: "Fill In The World sign in",
-        html: `<p>Click the image below to sign in to Fill In The World:</p>
-        <a href="${process.env.HOST_URL}${confirmUrl}">
+        html: `<h1>Fill In The World</h1>
+        <p>To complete your sign in to Fill In The World, please ensure the verification code below is displayed</p>
+        <h2>${verificationCode}</h2>
+        <p>and then click the image below:</p>
+        <a href="${process.env.CLIENT_URL}${confirmUrl}">
         <img src="data:image/png;base64,${fitwEmailBanner}" alt="Fill In The World banner" />
         </a>
         <p>Alternatively, if the image does not work, you can use this link instead:</p>
-        <a href="${process.env.HOST_URL}${confirmUrl}">${process.env.HOST_URL}${confirmUrl}</a>`,
+        <a href="${process.env.CLIENT_URL}${confirmUrl}">${process.env.CLIENT_URL}${confirmUrl}</a>`,
       })
       .then((clientResponse) =>
         debug(`Sent magic link and got "${clientResponse}"`)
@@ -72,3 +76,20 @@ passport.deserializeUser<Schema.Types.ObjectId>((id, done) => {
     done(error, user);
   });
 });
+
+export const authenticateAndRespond = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  passport.authenticate("magiclogin", (error, user, info) => {
+    if (error) {
+      return res.status(401).json({ error: error.toString() });
+    }
+    if (!user) {
+      return res.status(401).json(info);
+    }
+    req.user = user;
+    return res.status(202).json({ ...user });
+  })(req, res, next);
+};
