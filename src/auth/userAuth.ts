@@ -4,7 +4,7 @@ import User from "../models/user";
 
 export const createUser = (email: string, username: string) => {
   debug(`Creating new user ${username}`);
-  return verifyUser(email)
+  return verifyUserEmail(email)
     .then((user) => {
       if (user) {
         throw new Error(`User with this email address already exists!`);
@@ -23,7 +23,7 @@ export const createUser = (email: string, username: string) => {
     .catch((error) => debug(error));
 };
 
-export const verifyUser = async (email: string) => {
+export const verifyUserEmail = async (email: string) => {
   // Don't load all users in memory at once, process one-by-one
   const cursor = User.find().cursor();
   for (
@@ -37,4 +37,8 @@ export const verifyUser = async (email: string) => {
     }
   }
   return null;
+};
+
+export const verifyUserId = (userId: any) => {
+  return User.findById(userId);
 };

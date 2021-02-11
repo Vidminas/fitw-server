@@ -1,3 +1,4 @@
+const debug = require("debug")("fitw-server:routes/users");
 import { Request, Response, NextFunction, Router } from "express";
 import User from "../models/user";
 
@@ -14,6 +15,7 @@ router.use((error: any, req: Request, res: Response, next: NextFunction) => {
 
 // Get all users
 router.get("/", async (req: Request, res: Response, next: NextFunction) => {
+  debug("GET /");
   const users = await User.find().catch((error) => {
     next({ status: 500, ...error });
   });

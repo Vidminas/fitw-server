@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import passport from "passport";
 import MagicLoginStrategy from "passport-magic-login";
 import sgMail from "@sendgrid/mail";
-import { verifyUser } from "./userAuth";
+import { verifyUserId, verifyUserEmail } from "./userAuth";
 import userModel, { IUser } from "../models/user";
 import { Schema } from "mongoose";
 import { Request, Response, NextFunction } from "express";
@@ -13,11 +13,11 @@ const fitwEmailBanner = readFileSync("./public/FITW email banner.png").toString(
 );
 
 export const authUrl = "/auth";
-export const authVerifyUrl = "/auth/verify";
+export const loginUrl = "/login";
 
 export const magicLogin = new MagicLoginStrategy({
   secret: process.env.MAGIC_LINK_SECRET!,
-  callbackUrl: authVerifyUrl,
+  callbackUrl: loginUrl,
   sendMagicLink: (destination, confirmUrl, verificationCode) => {
     return sgMail
       .send({
@@ -46,7 +46,7 @@ export const magicLogin = new MagicLoginStrategy({
       return done(undefined, false, { message: "Authentication link expired" });
     }
 
-    verifyUser(payload.destination)
+    verifyUserEmail(payload.destination)
       .then((user) => {
         if (!user) {
           debug("No such registered user found!");
@@ -77,19 +77,36 @@ passport.deserializeUser<Schema.Types.ObjectId>((id, done) => {
   });
 });
 
-export const authenticateAndRespond = (
+export const authenticateToken = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  passport.authenticate("magiclogin", (error, user, info) => {
+  passport.authenticate("magiclogin", (error: any, user: IUser, info: any) => {
     if (error) {
       return res.status(401).json({ error: error.toString() });
     }
     if (!user) {
       return res.status(401).json(info);
     }
-    req.user = user;
-    return res.status(202).json({ ...user });
+    return res.status(202).json({ userId: user.id });
   })(req, res, next);
+};
+
+export const authenticateUser = (req: Request, res: Response) => {
+  debug(`Verifying locally cached user with ID ${req.body.data.userId}`);
+  verifyUserId(req.body.data.userId)
+    .then((dbUser) => {
+      if (dbUser) {
+        debug(`Successfully validated user ${dbUser.username}`);
+        res.status(202).json(dbUser);
+      } else {
+        res
+          .status(401)
+          .json({ error: "No such user found in server database!" });
+      }
+    })
+    .catch((error) => {
+      res.status(401).json({ error: error });
+    });
 };

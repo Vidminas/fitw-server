@@ -5,15 +5,16 @@ import session from "express-session";
 import passport from "passport";
 import path from "path";
 import {
-  authVerifyUrl,
+  loginUrl,
   authUrl,
   magicLogin,
-  authenticateAndRespond,
+  authenticateToken,
+  authenticateUser,
 } from "./auth/passport";
 import { mongodb } from "./mongodb";
 
 import indexRouter from "./routes/index";
-import userRouter from "./routes/user";
+import usersRouter from "./routes/users";
 
 const app = express();
 const MongoStore = require("connect-mongo")(session);
@@ -58,10 +59,11 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use("/", indexRouter);
-app.use("/user", userRouter);
+app.use("/users", usersRouter);
 
 // Authentication using passport and magic login
 app.post(authUrl, magicLogin.send);
-app.get(authVerifyUrl, authenticateAndRespond);
+app.get(loginUrl, authenticateToken);
+app.post(loginUrl, authenticateUser);
 
 export default app;
