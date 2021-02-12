@@ -84,26 +84,38 @@ export const authenticateToken = (
 ) => {
   passport.authenticate("magiclogin", (error: any, user: IUser, info: any) => {
     if (error) {
-      return res.status(401).json({ error: error.toString() });
+      return res.status(401).json({ error: error });
     }
     if (!user) {
-      return res.status(401).json(info);
+      return res.status(401).json({ error: info });
     }
-    return res.status(202).json({ userId: user.id });
+    return res.status(200).json({ id: user.id });
   })(req, res, next);
 };
 
 export const authenticateUser = (req: Request, res: Response) => {
-  debug(`Verifying locally cached user with ID ${req.body.data.userId}`);
-  verifyUserId(req.body.data.userId)
+  if (!req.body.id) {
+    debug("Received invalid locally cached user request with body:");
+    debug(req.body);
+    res.status(400).json({
+      error: {
+        message:
+          "Invalid locally cached user request. Try re-sending a new authentication email.",
+      },
+    });
+    return;
+  }
+
+  debug(`Verifying locally cached user with ID ${req.body.id}`);
+  verifyUserId(req.body.id)
     .then((dbUser) => {
       if (dbUser) {
         debug(`Successfully validated user ${dbUser.username}`);
-        res.status(202).json(dbUser);
+        res.status(200).json(dbUser);
       } else {
-        res
-          .status(401)
-          .json({ error: "No such user found in server database!" });
+        res.status(401).json({
+          error: { message: "No such user found in server database!" },
+        });
       }
     })
     .catch((error) => {
