@@ -22,6 +22,13 @@ const sessionStore = new MongoStore({
   mongooseConnection: mongodb,
   touchAfter: 24 * 3600, // refresh unmodified sessions once in 24h
   secret: process.env.MONGO_SESSION_SECRET,
+  // enable compatibility mode for TTL to support CosmosDB
+  // https://stackoverflow.com/questions/59638751/the-expireafterseconds-option-is-supported-on-ts-field-only-error-is-s
+  ...(process.env.NODE_ENV !== "dev" && {
+    ttl: 24 * 60 * 60 * 1000,
+    autoRemove: "interval",
+    autoRemoveInterval: 10, // Value in minutes (default is 10)
+  }),
 });
 
 app.set("view engine", "hbs");

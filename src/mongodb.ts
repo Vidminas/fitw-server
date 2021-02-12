@@ -14,6 +14,11 @@ export const initializeDB = () => {
       useUnifiedTopology: true,
       useFindAndModify: false,
       useCreateIndex: true,
+      // CosmosDB doesn't support retryable writes
+      // https://stackoverflow.com/questions/58589631/mongoerror-this-mongodb-deployment-does-not-support-retryable-writes-please-ad
+      ...(process.env.NODE_ENV !== "dev" && {
+        retryWrites: false,
+      }),
     })
     .then(() => {
       connected = true;
