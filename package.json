@@ -6,7 +6,7 @@
     "start": "env NODE_ENV=prod ts-node src/server.ts",
     "dev": "env NODE_ENV=dev nodemon src/server.ts",
     "devtrace": "env NODE_ENV=dev node --trace-warnings -r ts-node/register src/server.ts",
-    "build": "tsc --project ./"
+    "build": "env NODE_ENV=prod tsc --project ./ && ts-node copyStaticAssets.ts"
   },
   "dependencies": {
     "@sendgrid/mail": "^7.4.2",
@@ -31,7 +31,9 @@
     "@types/mysql": "^2.15.17",
     "@types/node": "^14.14.22",
     "@types/passport": "^1.0.5",
+    "@types/shelljs": "^0.8.8",
     "nodemon": "^2.0.7",
+    "shelljs": "^0.8.4",
     "ts-node": "^9.1.1",
     "typescript": "^4.1.3"
   }
