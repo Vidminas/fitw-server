@@ -2,7 +2,7 @@ const debug = require("debug")("fitw-server:routes/users");
 import { Request, Response, NextFunction, Router } from "express";
 import User from "../models/user";
 
-var router = Router();
+const router = Router();
 
 // error handler
 router.use((error: any, req: Request, res: Response, next: NextFunction) => {
@@ -10,6 +10,7 @@ router.use((error: any, req: Request, res: Response, next: NextFunction) => {
   const message =
     error.toString() ||
     "Something went wrong, please report this to the developers";
+  debug(message);
   return res.status(statusCode).send({ statusCode, message });
 });
 

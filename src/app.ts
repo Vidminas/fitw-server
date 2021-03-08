@@ -15,6 +15,7 @@ import { mongodb } from "./mongodb";
 
 import indexRouter from "./routes/index";
 import usersRouter from "./routes/users";
+import worldsRouter from "./routes/worlds";
 
 const app = express();
 const MongoStore = require("connect-mongo")(session);
@@ -67,6 +68,7 @@ app.use(passport.session());
 
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
+app.use("/worlds", worldsRouter);
 
 // Authentication using passport and magic login
 app.post(authUrl, magicLogin.send);
