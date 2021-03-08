@@ -4,7 +4,7 @@ import passport from "passport";
 import MagicLoginStrategy from "passport-magic-login";
 import sgMail from "@sendgrid/mail";
 import { verifyUserId, verifyUserEmail } from "./userAuth";
-import userModel, { IUser } from "../models/user";
+import userModel, { IUserDocument } from "../models/user";
 import { Schema } from "mongoose";
 import { Request, Response, NextFunction } from "express";
 
@@ -68,11 +68,11 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 passport.use(magicLogin);
 
 passport.serializeUser<Schema.Types.ObjectId>((user, done) => {
-  done(null, (user as IUser).id);
+  done(null, (user as IUserDocument).id);
 });
 
 passport.deserializeUser<Schema.Types.ObjectId>((id, done) => {
-  userModel.findById(id, (error: any, user: IUser) => {
+  userModel.findById(id, (error: any, user: IUserDocument) => {
     done(error, user);
   });
 });
@@ -82,15 +82,18 @@ export const authenticateToken = (
   res: Response,
   next: NextFunction
 ) => {
-  passport.authenticate("magiclogin", (error: any, user: IUser, info: any) => {
-    if (error) {
-      return res.status(401).json({ error: error });
+  passport.authenticate(
+    "magiclogin",
+    (error: any, user: IUserDocument, info: any) => {
+      if (error) {
+        return res.status(401).json({ error: error });
+      }
+      if (!user) {
+        return res.status(401).json({ error: info });
+      }
+      return res.status(200).json({ id: user.id });
     }
-    if (!user) {
-      return res.status(401).json({ error: info });
-    }
-    return res.status(200).json({ id: user.id });
-  })(req, res, next);
+  )(req, res, next);
 };
 
 export const authenticateUser = (req: Request, res: Response) => {
