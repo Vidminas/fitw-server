@@ -23,18 +23,14 @@ interface Message {
   readonly text: string;
 }
 
-interface Player {
+interface LivePlayer {
   user: IUser;
   world: IWorld;
-  // {
-  //   name: string;
-  //   fitwicks: IFitwick[];
-  // };
 }
 
 export const messages: Message[] = [];
 // maps socket ID to user/world
-export const livePlayers = new Map<Socket["id"], Player>();
+export const livePlayers = new Map<Socket["id"], LivePlayer>();
 // maps world ID to number of players in that world
 export const liveWorlds = new Map<IWorld["id"], number>();
 
@@ -58,7 +54,9 @@ const findFitwick = (socket: Socket, fitwick: IFitwick) => {
   if (livePlayers.has(socket.id)) {
     return livePlayers
       .get(socket.id)!
-      .world.fitwicks.find((worldFitwick) => worldFitwick.id === fitwick.id);
+      .world.fitwicks.find(
+        (worldFitwick) => worldFitwick.worldId === fitwick.worldId
+      );
   }
   return undefined;
 };
@@ -67,7 +65,9 @@ const deleteFitwick = (socket: Socket, fitwick: IFitwick) => {
   if (livePlayers.has(socket.id)) {
     const fitwicksArr = livePlayers.get(socket.id)!.world.fitwicks;
     fitwicksArr.splice(
-      fitwicksArr.findIndex((worldFitwick) => worldFitwick.id === fitwick.id),
+      fitwicksArr.findIndex(
+        (worldFitwick) => worldFitwick.worldId === fitwick.worldId
+      ),
       1
     );
   }
@@ -111,11 +111,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
         try {
           const worldInDB = await worldModel.findById(playerWorld.id);
           if (worldInDB) {
-            await worldInDB.updateOne({
-              name: playerWorld.name,
-              background: playerWorld.background,
-              fitwicks: playerWorld.fitwicks,
-            });
+            await worldInDB.updateOne(playerWorld);
           } else {
             const newWorld = new worldModel(playerWorld);
             await newWorld.save();
@@ -167,9 +163,10 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       `placed fitwick ${fitwick.name} at [${fitwick.x},${fitwick.y}]`
     );
     const fitwickRef = findFitwick(socket, fitwick);
-    if (fitwickRef) {
-      fitwickRef.state = "rest";
-    }
+    // the server doesn't care about the fitwick state - just forward this to all clients
+    // if (fitwickRef) {
+    //   fitwickRef.state = "rest";
+    // }
   });
 
   socket.on(EVENT_FITWICK_PICK_UP, (fitwick: IFitwick) => {
@@ -177,10 +174,12 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       socket,
       `picked up fitwick ${fitwick.name} from [${fitwick.x},${fitwick.y}]`
     );
+
     const fitwickRef = findFitwick(socket, fitwick);
-    if (fitwickRef) {
-      fitwickRef.state = "move";
-    }
+    // the server doesn't care about the fitwick state - just forward this to all clients
+    // if (fitwickRef) {
+    //   fitwickRef.state = "move";
+    // }
   });
 
   socket.on(EVENT_FITWICK_DELETE, (fitwick: IFitwick) => {

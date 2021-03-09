@@ -4,6 +4,10 @@ import IWorld from "../api/world";
 import { ModelDefinition } from "./utils";
 
 const fitwickSchemaDefinition: ModelDefinition<IFitwick> = {
+  worldId: {
+    type: String,
+    required: true,
+  },
   name: {
     type: String,
     required: true,
@@ -16,12 +20,18 @@ const fitwickSchemaDefinition: ModelDefinition<IFitwick> = {
     type: Number,
     required: true,
   },
-  state: {
+  atlasTexture: {
+    type: String,
+    required: true,
+  },
+  atlasFrame: {
     type: String,
     required: true,
   },
 };
-const fitwickSchema = new Schema(fitwickSchemaDefinition);
+const fitwickSchema = new Schema(fitwickSchemaDefinition, {
+  _id: false,
+});
 
 const worldSchemaDefinition: ModelDefinition<IWorld> = {
   name: {
