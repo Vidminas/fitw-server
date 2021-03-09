@@ -1,7 +1,6 @@
-// I decided not to implement unique IDs - name+x+y should be enough
-// this will result in two identical fitwicks placed on top of each other merging
-// but that should never be a serious problem
+// the fitwick ID is just name+number, not a mongoDB ID like the other interfaces
 interface IFitwick {
+  id: string;
   name: string;
   x: number;
   y: number;
