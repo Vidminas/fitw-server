@@ -26,12 +26,19 @@ const userSchemaDefinition: ModelDefinition<IUser> = {
   ],
 };
 
-const userSchema = new Schema(userSchemaDefinition, { timestamps: true });
-
 export interface IUserDocument extends IUser, Document {
   groups: Schema.Types.ObjectId[];
   worlds: Schema.Types.ObjectId[];
 }
+
+const userSchema = new Schema(userSchemaDefinition, { timestamps: true });
+userSchema.set("toJSON", {
+  virtuals: true,
+  versionKey: false,
+  transform: function (doc: any, ret: IUserDocument) {
+    delete ret._id;
+  },
+});
 
 const userModel = model<IUserDocument>("User", userSchema);
 

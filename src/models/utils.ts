@@ -11,14 +11,17 @@ type FieldType<T> = T extends number
   ? typeof String
   : Object;
 
-type Field<T> = {
-  type: FieldType<T>;
-  required?: IsRequired<T>;
-  unique?: IsUnique<T>;
-  enum?: Array<T>;
-  ref?: string;
-};
+type Field<T> =
+  | {
+      type: FieldType<T>;
+      required?: IsRequired<T>;
+      unique?: IsUnique<T>;
+      ref?: string;
+    }
+  | FieldType<T>;
 
 export type ModelDefinition<M> = {
-  [P in keyof M]-?: M[P] extends Array<infer U> ? Array<Field<U>> : Field<M[P]>;
+  [P in keyof M as Exclude<P, "id">]-?: M[P] extends Array<infer U>
+    ? Array<Field<U>>
+    : Field<M[P]>;
 };
