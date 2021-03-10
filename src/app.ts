@@ -20,6 +20,9 @@ import worldsRouter from "./routes/worlds";
 
 const app = express();
 
+// Only parse query parameters into strings, not objects
+app.set("query parser", "simple");
+
 app.set("view engine", "hbs");
 app.set("views", path.join(__dirname, "views"));
 app.engine(
