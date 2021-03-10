@@ -30,11 +30,16 @@ interface LivePlayer {
   userModified: boolean;
 }
 
+interface LiveWorld {
+  playersInWorld: number;
+  worldModified: boolean;
+}
+
 export const messages: Message[] = [];
 // maps socket ID to user/world
 export const livePlayers = new Map<Socket["id"], LivePlayer>();
 // maps world ID to number of players in that world
-export const liveWorlds = new Map<IWorld["id"], number>();
+export const liveWorlds = new Map<IWorld["id"], LiveWorld>();
 
 const logMessage = (socket: Socket, message: string) => {
   const currentDate = new Date().toLocaleString();
@@ -45,34 +50,30 @@ const logMessage = (socket: Socket, message: string) => {
   messages.unshift({ username: username!, date: currentDate, text: message });
 };
 
-const addFitwick = (socket: Socket, fitwick: IFitwick) => {
-  // TODO: verify fitwick properties
-  if (livePlayers.has(socket.id)) {
-    livePlayers.get(socket.id)!.world.fitwicks.push(fitwick);
+const modifyPlayerWorld = (socket: Socket, handler: Function) => {
+  if (!livePlayers.has(socket.id)) {
+    debug(`Non live player ${socket.id} attempted to modify world!`);
+    return;
   }
-};
 
-const findFitwick = (socket: Socket, fitwick: IFitwick) => {
-  if (livePlayers.has(socket.id)) {
-    return livePlayers
-      .get(socket.id)!
-      .world.fitwicks.find(
-        (worldFitwick) => worldFitwick.worldId === fitwick.worldId
-      );
-  }
-  return undefined;
-};
+  const livePlayer = livePlayers.get(socket.id)!;
 
-const deleteFitwick = (socket: Socket, fitwick: IFitwick) => {
-  if (livePlayers.has(socket.id)) {
-    const fitwicksArr = livePlayers.get(socket.id)!.world.fitwicks;
-    fitwicksArr.splice(
-      fitwicksArr.findIndex(
-        (worldFitwick) => worldFitwick.worldId === fitwick.worldId
-      ),
-      1
+  if (!liveWorlds.has(livePlayer.world.id)) {
+    debug(
+      `Player ${livePlayer.user.username} attempted to modify non-live world!`
     );
+    return;
   }
+
+  const liveWorld = liveWorlds.get(livePlayer.world.id)!;
+  liveWorld.worldModified = true;
+  handler(livePlayer.world);
+};
+
+const findFitwick = (world: IWorld, fitwick: IFitwick) => {
+  return world.fitwicks.find(
+    (worldFitwick) => worldFitwick.worldId === fitwick.worldId
+  );
 };
 
 const saveWorld = async (player: LivePlayer) => {
@@ -80,15 +81,14 @@ const saveWorld = async (player: LivePlayer) => {
     const worldInDB = await worldModel.findById(player.world.id);
     if (worldInDB) {
       await worldInDB.updateOne(player.world);
+      debug(`Updated world "${player.world.name}" in DB`);
     } else {
       const newWorld = new worldModel(player.world);
       await newWorld.save();
-      player.user.worlds.push(player.world);
-      player.userModified = true;
+      debug(`Created new world "${player.world.name}" in DB`);
     }
-    debug(`Saved world ${player.world.name} to DB`);
   } catch (error) {
-    debug(`Error saving world ${player.world.name} to DB: ${error}`);
+    debug(`Error saving world "${player.world.name}" to DB: ${error}`);
   }
 };
 
@@ -99,9 +99,9 @@ const saveUser = async (player: LivePlayer) => {
       await userInDB.updateOne(player.user);
     }
     player.userModified = false;
-    debug(`Saved user ${player.user.username} to DB`);
+    debug(`Saved user "${player.user.username}" to DB`);
   } catch (error) {
-    debug(`Error saving user ${player.user.username} to DB: ${error}`);
+    debug(`Error saving user "${player.user.username}" to DB: ${error}`);
   }
 };
 
@@ -122,7 +122,14 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
         world,
         userModified: false,
       });
-      liveWorlds.set(world.id, (liveWorlds.get(world.id) || 0) + 1);
+      if (liveWorlds.has(world.id)) {
+        liveWorlds.get(world.id)!.playersInWorld += 1;
+      } else {
+        liveWorlds.set(world.id, {
+          playersInWorld: 1,
+          worldModified: false,
+        });
+      }
     } else {
       logMessage(
         socket,
@@ -133,19 +140,34 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
 
   socket.on(EVENT_WORLD_EXIT, () => {
     logMessage(socket, "left the world");
+    if (livePlayers.has(socket.id)) {
+      const livePlayer = livePlayers.get(socket.id)!;
+      if (!livePlayer.user.worlds.includes(livePlayer.world.id)) {
+        debug(
+          `Added world "${livePlayer.world.name}" to ${livePlayer.user.username}'s worlds`
+        );
+        livePlayer.user.worlds.push(livePlayer.world.id);
+        livePlayer.userModified = true;
+      }
+    }
   });
 
   socket.on(EVENT_DISCONNECT, async () => {
     logMessage(socket, "disconnected");
     if (livePlayers.has(socket.id)) {
       const player = livePlayers.get(socket.id)!;
-      const playersInWorld = liveWorlds.get(player.world.id) || 1;
+      const liveWorld = liveWorlds.get(player.world.id);
 
-      if (playersInWorld === 1) {
-        saveWorld(player);
-        liveWorlds.delete(player.world.id);
-      } else {
-        liveWorlds.set(player.world.id, playersInWorld - 1);
+      if (liveWorld) {
+        if (liveWorld.worldModified) {
+          saveWorld(player);
+        }
+
+        if (liveWorld.playersInWorld <= 1) {
+          liveWorlds.delete(player.world.id);
+        } else {
+          liveWorld.playersInWorld -= 1;
+        }
       }
 
       if (player.userModified) {
@@ -158,9 +180,9 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
 
   socket.on(EVENT_WORLD_CHANGE_BACKGROUND, (newBackgroundTexture: string) => {
     logMessage(socket, `changed background to ${newBackgroundTexture}`);
-    if (livePlayers.has(socket.id)) {
-      livePlayers.get(socket.id)!.world.background = newBackgroundTexture;
-    }
+    modifyPlayerWorld(socket, (world: IWorld) => {
+      world.background = newBackgroundTexture;
+    });
   });
 
   socket.on(EVENT_DONE_FITWICK_NEW, (fitwick: IFitwick) => {
@@ -168,7 +190,10 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       socket,
       `created new fitwick ${fitwick.name} at [${fitwick.x},${fitwick.y}]`
     );
-    addFitwick(socket, fitwick);
+    // TODO: verify fitwick properties
+    modifyPlayerWorld(socket, (world: IWorld) => {
+      world.fitwicks.push(fitwick);
+    });
   });
 
   socket.on(EVENT_FITWICK_MOVE, (fitwick: IFitwick) => {
@@ -177,11 +202,13 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
     //   socket,
     //   `moved fitwick ${fitwick.name} to [${fitwick.x},${fitwick.y}]`
     // );
-    const fitwickRef = findFitwick(socket, fitwick);
-    if (fitwickRef) {
-      fitwickRef.x = fitwick.x;
-      fitwickRef.y = fitwick.y;
-    }
+    modifyPlayerWorld(socket, (world: IWorld) => {
+      const fitwickRef = findFitwick(world, fitwick);
+      if (fitwickRef) {
+        fitwickRef.x = fitwick.x;
+        fitwickRef.y = fitwick.y;
+      }
+    });
   });
 
   socket.on(EVENT_DONE_FITWICK_PLACE, (fitwick: IFitwick) => {
@@ -189,7 +216,13 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       socket,
       `placed fitwick ${fitwick.name} at [${fitwick.x},${fitwick.y}]`
     );
-    const fitwickRef = findFitwick(socket, fitwick);
+    modifyPlayerWorld(socket, (world: IWorld) => {
+      const fitwickRef = findFitwick(world, fitwick);
+      if (fitwickRef) {
+        fitwickRef.x = fitwick.x;
+        fitwickRef.y = fitwick.y;
+      }
+    });
     // the server doesn't care about the fitwick state - just forward this to all clients
     // if (fitwickRef) {
     //   fitwickRef.state = "rest";
@@ -202,7 +235,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       `picked up fitwick ${fitwick.name} from [${fitwick.x},${fitwick.y}]`
     );
 
-    const fitwickRef = findFitwick(socket, fitwick);
+    // const fitwickRef = findFitwick(socket, fitwick);
     // the server doesn't care about the fitwick state - just forward this to all clients
     // if (fitwickRef) {
     //   fitwickRef.state = "move";
@@ -214,7 +247,14 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       socket,
       `deleted fitwick ${fitwick.name} at [${fitwick.x},${fitwick.y}]`
     );
-    deleteFitwick(socket, fitwick);
+    modifyPlayerWorld(socket, (world: IWorld) => {
+      world.fitwicks.splice(
+        world.fitwicks.findIndex(
+          (worldFitwick) => worldFitwick.worldId === fitwick.worldId
+        ),
+        1
+      );
+    });
   });
 
   socket.on("message", (message: string) => {
