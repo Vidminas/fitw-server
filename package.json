@@ -11,14 +11,14 @@
   "dependencies": {
     "@sendgrid/mail": "^7.4.2",
     "bcrypt": "^5.0.0",
-    "connect-mongo": "^3.2.0",
+    "connect-mongo": "^4.3.1",
     "cors": "^2.8.5",
     "debug": "~2.6.9",
     "dotenv": "^8.2.0",
     "express": "~4.16.1",
     "express-handlebars": "^5.2.0",
     "express-session": "^1.17.1",
-    "mongoose": "^5.11.14",
+    "mongoose": "^5.11.19",
     "passport": "^0.4.1",
     "passport-magic-login": "^1.0.7",
     "socket.io": "^3.1.0"

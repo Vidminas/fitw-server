@@ -7,22 +7,27 @@ import mongoose from "mongoose";
 
 let connected = false;
 
+export const mongoOptions = {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  // CosmosDB doesn't support retryable writes
+  // https://stackoverflow.com/questions/58589631/mongoerror-this-mongodb-deployment-does-not-support-retryable-writes-please-ad
+  ...(process.env.NODE_ENV !== "dev" && {
+    retryWrites: false,
+  }),
+};
+
 export const initializeDB = () => {
   return mongoose
     .connect(process.env.DATABASE_URL!, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+      ...mongoOptions,
       useFindAndModify: false,
       useCreateIndex: true,
-      // CosmosDB doesn't support retryable writes
-      // https://stackoverflow.com/questions/58589631/mongoerror-this-mongodb-deployment-does-not-support-retryable-writes-please-ad
-      ...(process.env.NODE_ENV !== "dev" && {
-        retryWrites: false,
-      }),
     })
-    .then(() => {
+    .then((m) => {
       connected = true;
       debug("Successfully initialised MongoDB database");
+      return m.connection.getClient();
     })
     .catch((error) => {
       connected = false;
@@ -42,5 +47,3 @@ const disconnectDB = () => {
 
 // If the Node process ends, close the Mongoose connection
 process.on("SIGINT", disconnectDB).on("SIGTERM", disconnectDB);
-
-export const mongodb = mongoose.connection;

@@ -4,6 +4,7 @@ import handlebars from "express-handlebars";
 import session from "express-session";
 import passport from "passport";
 import path from "path";
+import MongoStore from "connect-mongo";
 import {
   loginUrl,
   authUrl,
@@ -11,26 +12,13 @@ import {
   authenticateToken,
   authenticateUser,
 } from "./auth/passport";
-import { mongodb } from "./mongodb";
+import { mongoOptions } from "./mongodb";
 
 import indexRouter from "./routes/index";
 import usersRouter from "./routes/users";
 import worldsRouter from "./routes/worlds";
 
 const app = express();
-const MongoStore = require("connect-mongo")(session);
-const sessionStore = new MongoStore({
-  mongooseConnection: mongodb,
-  touchAfter: 24 * 3600, // refresh unmodified sessions once in 24h
-  secret: process.env.MONGO_SESSION_SECRET,
-  // enable compatibility mode for TTL to support CosmosDB
-  // https://stackoverflow.com/questions/59638751/the-expireafterseconds-option-is-supported-on-ts-field-only-error-is-s
-  ...(process.env.NODE_ENV !== "dev" && {
-    ttl: 24 * 60 * 60 * 1000,
-    autoRemove: "interval",
-    autoRemoveInterval: 10, // Value in minutes (default is 10)
-  }),
-});
 
 app.set("view engine", "hbs");
 app.set("views", path.join(__dirname, "views"));
@@ -54,7 +42,21 @@ app.use(
     secret: process.env.SESSION_SECRET!,
     saveUninitialized: false,
     resave: false,
-    store: sessionStore,
+    store: MongoStore.create({
+      mongoUrl: process.env.DATABASE_URL,
+      mongoOptions,
+      touchAfter: 24 * 3600, // refresh unmodified sessions once in 24h
+      crypto: {
+        secret: process.env.MONGO_SESSION_SECRET!,
+      },
+      // enable compatibility mode for TTL to support CosmosDB
+      // https://stackoverflow.com/questions/59638751/the-expireafterseconds-option-is-supported-on-ts-field-only-error-is-s
+      ...(process.env.NODE_ENV !== "dev" && {
+        ttl: 24 * 60 * 60 * 1000,
+        autoRemove: "interval",
+        autoRemoveInterval: 10, // Value in minutes (default is 10)
+      }),
+    }),
   })
 );
 // app.use(express.static(path.join(__dirname, "..", "public")));
