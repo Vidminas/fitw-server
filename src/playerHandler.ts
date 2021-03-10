@@ -15,6 +15,7 @@ import {
   EVENT_FITWICK_DELETE,
 } from "./api/events";
 import worldModel from "./models/world";
+import userModel from "./models/user";
 const debug = require("debug")("fitw-server:server");
 
 interface Message {
@@ -26,6 +27,7 @@ interface Message {
 interface LivePlayer {
   user: IUser;
   world: IWorld;
+  userModified: boolean;
 }
 
 export const messages: Message[] = [];
@@ -73,6 +75,36 @@ const deleteFitwick = (socket: Socket, fitwick: IFitwick) => {
   }
 };
 
+const saveWorld = async (player: LivePlayer) => {
+  try {
+    const worldInDB = await worldModel.findById(player.world.id);
+    if (worldInDB) {
+      await worldInDB.updateOne(player.world);
+    } else {
+      const newWorld = new worldModel(player.world);
+      await newWorld.save();
+      player.user.worlds.push(player.world);
+      player.userModified = true;
+    }
+    debug(`Saved world ${player.world.name} to DB`);
+  } catch (error) {
+    debug(`Error saving world ${player.world.name} to DB: ${error}`);
+  }
+};
+
+const saveUser = async (player: LivePlayer) => {
+  try {
+    const userInDB = await userModel.findById(player.user.id);
+    if (userInDB) {
+      await userInDB.updateOne(player.user);
+    }
+    player.userModified = false;
+    debug(`Saved user ${player.user.username} to DB`);
+  } catch (error) {
+    debug(`Error saving user ${player.user.username} to DB: ${error}`);
+  }
+};
+
 const registerPlayerHandlers = (io: Server, socket: Socket) => {
   // the connection event here is implicit:
   // this function is called when a client connects in server.ts
@@ -88,6 +120,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       livePlayers.set(socket.id, {
         user,
         world,
+        userModified: false,
       });
       liveWorlds.set(world.id, (liveWorlds.get(world.id) || 0) + 1);
     } else {
@@ -105,26 +138,20 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
   socket.on(EVENT_DISCONNECT, async () => {
     logMessage(socket, "disconnected");
     if (livePlayers.has(socket.id)) {
-      const playerWorld = livePlayers.get(socket.id)!.world;
-      const playersInWorld = liveWorlds.get(playerWorld.id) || 1;
-      if (playersInWorld === 1) {
-        try {
-          const worldInDB = await worldModel.findById(playerWorld.id);
-          if (worldInDB) {
-            await worldInDB.updateOne(playerWorld);
-          } else {
-            const newWorld = new worldModel(playerWorld);
-            await newWorld.save();
-          }
-          debug(`Saved world ${playerWorld.name} to DB`);
-        } catch (error) {
-          debug(`Error saving world ${playerWorld.name} to DB: ${error}`);
-        }
+      const player = livePlayers.get(socket.id)!;
+      const playersInWorld = liveWorlds.get(player.world.id) || 1;
 
-        liveWorlds.delete(playerWorld.id);
+      if (playersInWorld === 1) {
+        saveWorld(player);
+        liveWorlds.delete(player.world.id);
       } else {
-        liveWorlds.set(playerWorld.id, playersInWorld - 1);
+        liveWorlds.set(player.world.id, playersInWorld - 1);
       }
+
+      if (player.userModified) {
+        saveUser(player);
+      }
+
       livePlayers.delete(socket.id);
     }
   });
