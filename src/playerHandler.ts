@@ -83,7 +83,10 @@ const saveWorld = async (player: LivePlayer) => {
       await worldInDB.updateOne(player.world);
       debug(`Updated world "${player.world.name}" in DB`);
     } else {
-      const newWorld = new worldModel(player.world);
+      const newWorld = new worldModel({
+        _id: player.world.id,
+        ...player.world,
+      });
       await newWorld.save();
       debug(`Created new world "${player.world.name}" in DB`);
     }
@@ -111,30 +114,37 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
   logMessage(socket, "connected");
 
   socket.on(EVENT_WORLD_ENTER, (user: IUser, world: IWorld) => {
-    if (user && world) {
-      // generate a new world ID for newly created worlds
-      if (!world.id) {
-        world.id = Types.ObjectId();
-      }
-      logMessage(socket, `${user.username} entered ${world.name}`);
-      livePlayers.set(socket.id, {
-        user,
-        world,
-        userModified: false,
-      });
-      if (liveWorlds.has(world.id)) {
-        liveWorlds.get(world.id)!.playersInWorld += 1;
-      } else {
-        liveWorlds.set(world.id, {
-          playersInWorld: 1,
-          worldModified: false,
-        });
-      }
-    } else {
+    if (!user || !world) {
       logMessage(
         socket,
         `attempted to enter ${world?.name} as ${user?.username}`
       );
+      return;
+    }
+
+    logMessage(socket, `${user.username} entered ${world.name}`);
+    livePlayers.set(socket.id, {
+      user,
+      world,
+      userModified: false,
+    });
+
+    // generate a new world ID for newly created worlds
+    if (!world.id) {
+      world.id = Types.ObjectId();
+      liveWorlds.set(world.id, {
+        playersInWorld: 1,
+        // ensure that the new world is saved back even if empty
+        // because it gets added to user worlds
+        worldModified: true,
+      });
+    } else if (liveWorlds.has(world.id)) {
+      liveWorlds.get(world.id)!.playersInWorld += 1;
+    } else {
+      liveWorlds.set(world.id, {
+        playersInWorld: 1,
+        worldModified: false,
+      });
     }
   });
 
