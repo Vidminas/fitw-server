@@ -36,7 +36,6 @@ const fitwickSchema = new Schema(fitwickSchemaDefinition, {
 const worldSchemaDefinition: ModelDefinition<IWorld> = {
   name: {
     type: String,
-    unique: true,
     required: true,
   },
   background: String,
