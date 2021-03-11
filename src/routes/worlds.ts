@@ -8,7 +8,7 @@ const router = Router();
 router.use((error: any, req: Request, res: Response, next: NextFunction) => {
   const statusCode = error.status || 500;
   const message =
-    error.toString() ||
+    error.message ||
     "Something went wrong, please report this to the developers";
   debug(message);
   return res.status(statusCode).send({ statusCode, message });
@@ -49,9 +49,9 @@ router.get(
         return res.json(world);
       }
       const error = new Error(`World ${worldId} not found!`);
-      next({ status: 404, error });
+      next({ status: 404, ...error });
     } catch (error) {
-      next({ status: 400, error });
+      next({ status: 400, ...error });
     }
   }
 );

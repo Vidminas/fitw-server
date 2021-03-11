@@ -12,7 +12,7 @@ import {
   EVENT_WORLD_CHANGE_BACKGROUND,
   EVENT_WORLD_EXIT,
   EVENT_FITWICK_PICK_UP,
-  EVENT_FITWICK_DELETE,
+  EVENT_DONE_FITWICK_DELETE,
 } from "./api/events";
 import worldModel from "./models/world";
 import userModel from "./models/user";
@@ -252,7 +252,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
     // }
   });
 
-  socket.on(EVENT_FITWICK_DELETE, (fitwick: IFitwick) => {
+  socket.on(EVENT_DONE_FITWICK_DELETE, (fitwick: IFitwick) => {
     logMessage(
       socket,
       `deleted fitwick ${fitwick.name} at [${fitwick.x},${fitwick.y}]`
