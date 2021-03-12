@@ -489,10 +489,10 @@ configstore@^5.0.1:
     write-file-atomic "^3.0.0"
     xdg-basedir "^4.0.0"
 
-connect-mongo@^4.3.1:
-  version "4.3.1"
-  resolved "https://registry.yarnpkg.com/connect-mongo/-/connect-mongo-4.3.1.tgz#9974cf13dda1a515f06fe97c7c0c9f161882aea9"
-  integrity sha512-R8X9vQ3ahHLd9ZYzjKbtfnGdW/ReY6EmjJv1IOKaT3v9ZJQdV1cE6peDBoNW4Pd2XmNqOVCywvy2ov2a5/Cnsg==
+connect-mongo@^4.4.0:
+  version "4.4.0"
+  resolved "https://registry.yarnpkg.com/connect-mongo/-/connect-mongo-4.4.0.tgz#08b3deaadcd2b27c9f154784f8ff697d1ca3681b"
+  integrity sha512-TTv9SUeLazm7eAvrzDfcIbiRcgeK8Dhif6XLDxnL41S3/1+EtFUgdI+kx6lcZtEdobMY/ehLWtJ6+WTXtsQDvg==
   dependencies:
     debug "^4.3.1"
     kruptein "^3.0.0"
