@@ -4,16 +4,6 @@ import worldModel from "../models/world";
 
 const router = Router();
 
-// error handler
-router.use((error: any, req: Request, res: Response, next: NextFunction) => {
-  const statusCode = error.status || 500;
-  const message =
-    error.message ||
-    "Something went wrong, please report this to the developers";
-  debug(message);
-  return res.status(statusCode).send({ statusCode, message });
-});
-
 // Get all worlds (or a collection of some with the query param ?id=1,2,3)
 // see https://stackoverflow.com/questions/9371195/rest-api-requesting-multiple-resources-in-a-single-get
 router.get("/", async (req: Request, res: Response, next: NextFunction) => {
@@ -48,12 +38,34 @@ router.get(
       if (world) {
         return res.json(world);
       }
-      const error = new Error(`World ${worldId} not found!`);
-      next({ status: 404, ...error });
+      next({ status: 404, message: `World ${worldId} not found!` });
     } catch (error) {
-      next({ status: 400, ...error });
+      next({ status: 400, message: error.message });
     }
   }
 );
+
+router.delete(
+  "/:worldId",
+  async (req: Request, res: Response, next: NextFunction) => {
+    const worldId = req.params.worldId;
+    debug(`DELETE /${worldId}`);
+    next({ status: 500, message: "World deletion is not implemented yet!" });
+  }
+);
+
+// error handler
+router.use((error: any, req: Request, res: Response, next: NextFunction) => {
+  if (res.headersSent) {
+    return next(error);
+  }
+
+  const statusCode = error.status || 500;
+  const message =
+    error.message ||
+    "Something went wrong, please report this to the developers";
+  debug(message);
+  return res.status(statusCode).send(message);
+});
 
 export default router;
