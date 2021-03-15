@@ -16,6 +16,7 @@ import {
 } from "./api/events";
 import worldModel from "./models/world";
 import userModel from "./models/user";
+import { FITWICKS, FitwickTheme } from "./fitwicks";
 const debug = require("debug")("fitw-server:server");
 
 interface Message {
@@ -126,11 +127,12 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
     livePlayers.set(socket.id, {
       user,
       world,
-      userModified: false,
+      userModified: !world.id,
     });
 
     // generate a new world ID for newly created worlds
     if (!world.id) {
+      user.stats.createdWorlds++;
       world.id = Types.ObjectId();
       liveWorlds.set(world.id, {
         playersInWorld: 1,
@@ -200,6 +202,41 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       socket,
       `created new fitwick ${fitwick.name} at [${fitwick.x},${fitwick.y}]`
     );
+    if (livePlayers.has(socket.id)) {
+      const livePlayer = livePlayers.get(socket.id)!;
+      livePlayer.user.stats.createdTotalObjects++;
+      livePlayer.userModified = true;
+
+      if (!livePlayer.user.uniqueObjectList) {
+        livePlayer.user.uniqueObjectList = [fitwick.name];
+      } else if (!livePlayer.user.uniqueObjectList.includes(fitwick.name)) {
+        livePlayer.user.uniqueObjectList.push(fitwick.name);
+        livePlayer.user.stats.createdUniqueObjects++;
+
+        if (FITWICKS.has(fitwick.name)) {
+          const fitwickThemes = FITWICKS.get(fitwick.name)!;
+          if (fitwickThemes.includes(FitwickTheme.COOKING)) {
+            livePlayer.user.stats.createdUniqueCookingObjects++;
+          }
+          if (fitwickThemes.includes(FitwickTheme.DESERT)) {
+            livePlayer.user.stats.createdUniqueDesertObjects++;
+          }
+          if (fitwickThemes.includes(FitwickTheme.ELETRONICS)) {
+            livePlayer.user.stats.createdUniqueElectronicsObjects++;
+          }
+          if (fitwickThemes.includes(FitwickTheme.TOOLS)) {
+            livePlayer.user.stats.createdUniqueToolObjects++;
+          }
+          if (fitwickThemes.includes(FitwickTheme.TREES)) {
+            livePlayer.user.stats.createdUniqueTreeObjects++;
+          }
+          if (fitwickThemes.includes(FitwickTheme.WINTER)) {
+            livePlayer.user.stats.createdUniqueWinterObjects++;
+          }
+        }
+      }
+    }
+
     // TODO: verify fitwick properties
     modifyPlayerWorld(socket, (world: IWorld) => {
       world.fitwicks.push(fitwick);

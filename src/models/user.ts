@@ -24,6 +24,18 @@ const userSchemaDefinition: ModelDefinition<IUser> = {
       ref: "World",
     },
   ],
+  uniqueObjectList: [String],
+  stats: {
+    createdWorlds: { type: Number },
+    createdTotalObjects: { type: Number },
+    createdUniqueObjects: { type: Number },
+    createdUniqueWinterObjects: { type: Number },
+    createdUniqueToolObjects: { type: Number },
+    createdUniqueCookingObjects: { type: Number },
+    createdUniqueElectronicsObjects: { type: Number },
+    createdUniqueDesertObjects: { type: Number },
+    createdUniqueTreeObjects: { type: Number },
+  },
 };
 
 export interface IUserDocument extends IUser, Document {
@@ -37,6 +49,7 @@ userSchema.set("toJSON", {
   versionKey: false,
   transform: function (doc: any, ret: IUserDocument) {
     delete ret._id;
+    delete ret.uniqueObjectList;
   },
 });
 
