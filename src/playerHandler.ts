@@ -54,7 +54,9 @@ const logMessage = (socket: Socket, message: string) => {
 const modifyPlayerWorld = (
   socket: Socket,
   handler: (world: IWorld) => void,
-  announcementForOthers?: (username: string) => string
+  announcementForOthers: ((username: string) => string) | null,
+  event: string,
+  ...args: any[]
 ) => {
   if (!livePlayers.has(socket.id)) {
     logMessage(
@@ -78,14 +80,16 @@ const modifyPlayerWorld = (
   liveWorld.worldModified = true;
   handler(livePlayer.world);
 
-  if (announcementForOthers) {
-    for (const otherPlayer of liveWorld.playersInWorld) {
-      if (otherPlayer.id !== socket.id) {
+  for (const otherPlayer of liveWorld.playersInWorld) {
+    if (otherPlayer.id !== socket.id) {
+      if (announcementForOthers) {
         otherPlayer.emit(
           "message",
           announcementForOthers(livePlayer.user.username)
         );
       }
+
+      otherPlayer.emit(event, ...args);
     }
   }
 };
@@ -239,7 +243,9 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       (world: IWorld) => {
         world.background = newBackgroundTexture;
       },
-      (username: string) => `${username} changed the world background!`
+      (username: string) => `${username} changed the world background!`,
+      EVENT_WORLD_CHANGE_BACKGROUND,
+      newBackgroundTexture
     );
   });
 
@@ -284,9 +290,15 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
     }
 
     // TODO: verify fitwick properties
-    modifyPlayerWorld(socket, (world: IWorld) => {
-      world.fitwicks.push(fitwick);
-    });
+    modifyPlayerWorld(
+      socket,
+      (world: IWorld) => {
+        world.fitwicks.push(fitwick);
+      },
+      null,
+      EVENT_DONE_FITWICK_NEW,
+      fitwick
+    );
   });
 
   socket.on(EVENT_FITWICK_MOVE, (fitwick: IFitwick) => {
@@ -295,13 +307,19 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
     //   socket,
     //   `moved fitwick ${fitwick.name} to [${fitwick.x},${fitwick.y}]`
     // );
-    modifyPlayerWorld(socket, (world: IWorld) => {
-      const fitwickRef = findFitwick(world, fitwick);
-      if (fitwickRef) {
-        fitwickRef.x = fitwick.x;
-        fitwickRef.y = fitwick.y;
-      }
-    });
+    modifyPlayerWorld(
+      socket,
+      (world: IWorld) => {
+        const fitwickRef = findFitwick(world, fitwick);
+        if (fitwickRef) {
+          fitwickRef.x = fitwick.x;
+          fitwickRef.y = fitwick.y;
+        }
+      },
+      null,
+      EVENT_FITWICK_MOVE,
+      fitwick
+    );
   });
 
   socket.on(EVENT_DONE_FITWICK_PLACE, (fitwick: IFitwick) => {
@@ -309,17 +327,19 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       socket,
       `placed fitwick ${fitwick.name} at [${fitwick.x},${fitwick.y}]`
     );
-    modifyPlayerWorld(socket, (world: IWorld) => {
-      const fitwickRef = findFitwick(world, fitwick);
-      if (fitwickRef) {
-        fitwickRef.x = fitwick.x;
-        fitwickRef.y = fitwick.y;
-      }
-    });
-    // the server doesn't care about the fitwick state - just forward this to all clients
-    // if (fitwickRef) {
-    //   fitwickRef.state = "rest";
-    // }
+    modifyPlayerWorld(
+      socket,
+      (world: IWorld) => {
+        const fitwickRef = findFitwick(world, fitwick);
+        if (fitwickRef) {
+          fitwickRef.x = fitwick.x;
+          fitwickRef.y = fitwick.y;
+        }
+      },
+      null,
+      EVENT_DONE_FITWICK_PLACE,
+      fitwick
+    );
   });
 
   socket.on(EVENT_FITWICK_PICK_UP, (fitwick: IFitwick) => {
@@ -328,11 +348,13 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       `picked up fitwick ${fitwick.name} from [${fitwick.x},${fitwick.y}]`
     );
 
-    // const fitwickRef = findFitwick(socket, fitwick);
-    // the server doesn't care about the fitwick state - just forward this to all clients
-    // if (fitwickRef) {
-    //   fitwickRef.state = "move";
-    // }
+    modifyPlayerWorld(
+      socket,
+      (world: IWorld) => undefined,
+      null,
+      EVENT_FITWICK_PICK_UP,
+      fitwick
+    );
   });
 
   socket.on(EVENT_DONE_FITWICK_DELETE, (fitwick: IFitwick) => {
@@ -340,14 +362,20 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       socket,
       `deleted fitwick ${fitwick.name} at [${fitwick.x},${fitwick.y}]`
     );
-    modifyPlayerWorld(socket, (world: IWorld) => {
-      world.fitwicks.splice(
-        world.fitwicks.findIndex(
-          (worldFitwick) => worldFitwick.worldId === fitwick.worldId
-        ),
-        1
-      );
-    });
+    modifyPlayerWorld(
+      socket,
+      (world: IWorld) => {
+        world.fitwicks.splice(
+          world.fitwicks.findIndex(
+            (worldFitwick) => worldFitwick.worldId === fitwick.worldId
+          ),
+          1
+        );
+      },
+      null,
+      EVENT_DONE_FITWICK_DELETE,
+      fitwick
+    );
   });
 };
 
