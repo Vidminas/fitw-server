@@ -3,6 +3,7 @@ export const EVENT_CONNECT = "connect";
 export const EVENT_DISCONNECT = "disconnect";
 // game events - their names can be anything
 // as long as the server and client match up
+export const EVENT_MESSAGE = "message";
 export const EVENT_WORLD_ENTER = "world/enter";
 export const EVENT_WORLD_CHANGE_BACKGROUND = "world/change-background";
 export const EVENT_WORLD_EXIT = "world/exit";

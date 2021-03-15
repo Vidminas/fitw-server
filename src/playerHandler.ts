@@ -13,6 +13,7 @@ import {
   EVENT_WORLD_EXIT,
   EVENT_FITWICK_PICK_UP,
   EVENT_DONE_FITWICK_DELETE,
+  EVENT_MESSAGE,
 } from "./api/events";
 import worldModel from "./models/world";
 import userModel from "./models/user";
@@ -84,7 +85,8 @@ const modifyPlayerWorld = (
     if (otherPlayer.id !== socket.id) {
       if (announcementForOthers) {
         otherPlayer.emit(
-          "message",
+          EVENT_MESSAGE,
+          "primary",
           announcementForOthers(livePlayer.user.username)
         );
       }
@@ -166,7 +168,11 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
     } else if (liveWorlds.has(world.id)) {
       const liveWorld = liveWorlds.get(world.id)!;
       for (const otherPlayer of liveWorld.playersInWorld) {
-        otherPlayer.emit("message", `${user.username} joined the world!`);
+        otherPlayer.emit(
+          EVENT_MESSAGE,
+          "primary",
+          `${user.username} joined the world!`
+        );
       }
       liveWorld.playersInWorld.push(socket);
     } else {
@@ -194,7 +200,8 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       for (const otherPlayer of liveWorld.playersInWorld) {
         if (otherPlayer.id !== socket.id) {
           otherPlayer.emit(
-            "message",
+            EVENT_MESSAGE,
+            "primary",
             `${livePlayer.user.username} left the world!`
           );
         }
