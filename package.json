@@ -3,10 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "env NODE_ENV=prod ts-node src/server.ts",
+    "start": "env NODE_ENV=prod node server.js",
     "dev": "env NODE_ENV=dev nodemon src/server.ts",
     "devtrace": "env NODE_ENV=dev node --trace-warnings -r ts-node/register src/server.ts",
-    "build": "env NODE_ENV=prod tsc --project ./ && ts-node copyStaticAssets.ts"
+    "devbuild": "env NODE_ENV=prod tsc --project ./ && ts-node copyStaticAssets.ts"
   },
   "dependencies": {
     "@sendgrid/mail": "^7.4.2",
