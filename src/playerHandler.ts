@@ -32,14 +32,14 @@ interface LivePlayer {
 }
 
 interface LiveWorld {
-  playersInWorld: number;
+  playersInWorld: Socket[];
   worldModified: boolean;
 }
 
 export const messages: Message[] = [];
 // maps socket ID to user/world
 export const livePlayers = new Map<Socket["id"], LivePlayer>();
-// maps world ID to number of players in that world
+// maps world ID to players currently in that world
 export const liveWorlds = new Map<IWorld["id"], LiveWorld>();
 
 const logMessage = (socket: Socket, message: string) => {
@@ -51,16 +51,24 @@ const logMessage = (socket: Socket, message: string) => {
   messages.unshift({ username: username!, date: currentDate, text: message });
 };
 
-const modifyPlayerWorld = (socket: Socket, handler: Function) => {
+const modifyPlayerWorld = (
+  socket: Socket,
+  handler: (world: IWorld) => void,
+  announcementForOthers?: (username: string) => string
+) => {
   if (!livePlayers.has(socket.id)) {
-    debug(`Non live player ${socket.id} attempted to modify world!`);
+    logMessage(
+      socket,
+      `Non live player ${socket.id} attempted to modify world!`
+    );
     return;
   }
 
   const livePlayer = livePlayers.get(socket.id)!;
 
   if (!liveWorlds.has(livePlayer.world.id)) {
-    debug(
+    logMessage(
+      socket,
       `Player ${livePlayer.user.username} attempted to modify non-live world!`
     );
     return;
@@ -69,6 +77,17 @@ const modifyPlayerWorld = (socket: Socket, handler: Function) => {
   const liveWorld = liveWorlds.get(livePlayer.world.id)!;
   liveWorld.worldModified = true;
   handler(livePlayer.world);
+
+  if (announcementForOthers) {
+    for (const otherPlayer of liveWorld.playersInWorld) {
+      if (otherPlayer.id !== socket.id) {
+        otherPlayer.emit(
+          "message",
+          announcementForOthers(livePlayer.user.username)
+        );
+      }
+    }
+  }
 };
 
 const findFitwick = (world: IWorld, fitwick: IFitwick) => {
@@ -135,16 +154,20 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       user.stats.createdWorlds++;
       world.id = Types.ObjectId();
       liveWorlds.set(world.id, {
-        playersInWorld: 1,
+        playersInWorld: [socket],
         // ensure that the new world is saved back even if empty
         // because it gets added to user worlds
         worldModified: true,
       });
     } else if (liveWorlds.has(world.id)) {
-      liveWorlds.get(world.id)!.playersInWorld += 1;
+      const liveWorld = liveWorlds.get(world.id)!;
+      for (const otherPlayer of liveWorld.playersInWorld) {
+        otherPlayer.emit("message", `${user.username} joined the world!`);
+      }
+      liveWorld.playersInWorld.push(socket);
     } else {
       liveWorlds.set(world.id, {
-        playersInWorld: 1,
+        playersInWorld: [socket],
         worldModified: false,
       });
     }
@@ -155,11 +178,22 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
     if (livePlayers.has(socket.id)) {
       const livePlayer = livePlayers.get(socket.id)!;
       if (!livePlayer.user.worlds.includes(livePlayer.world.id)) {
-        debug(
+        logMessage(
+          socket,
           `Added world "${livePlayer.world.name}" to ${livePlayer.user.username}'s worlds`
         );
         livePlayer.user.worlds.push(livePlayer.world.id);
         livePlayer.userModified = true;
+      }
+
+      const liveWorld = liveWorlds.get(livePlayer.world.id)!;
+      for (const otherPlayer of liveWorld.playersInWorld) {
+        if (otherPlayer.id !== socket.id) {
+          otherPlayer.emit(
+            "message",
+            `${livePlayer.user.username} left the world!`
+          );
+        }
       }
     }
   });
@@ -175,10 +209,18 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
           saveWorld(player);
         }
 
-        if (liveWorld.playersInWorld <= 1) {
+        if (
+          !liveWorld.playersInWorld ||
+          liveWorld.playersInWorld[0].id === socket.id
+        ) {
           liveWorlds.delete(player.world.id);
         } else {
-          liveWorld.playersInWorld -= 1;
+          liveWorld.playersInWorld.splice(
+            liveWorld.playersInWorld.findIndex(
+              (playerSocket) => playerSocket.id === socket.id
+            ),
+            1
+          );
         }
       }
 
@@ -192,9 +234,13 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
 
   socket.on(EVENT_WORLD_CHANGE_BACKGROUND, (newBackgroundTexture: string) => {
     logMessage(socket, `changed background to ${newBackgroundTexture}`);
-    modifyPlayerWorld(socket, (world: IWorld) => {
-      world.background = newBackgroundTexture;
-    });
+    modifyPlayerWorld(
+      socket,
+      (world: IWorld) => {
+        world.background = newBackgroundTexture;
+      },
+      (username: string) => `${username} changed the world background!`
+    );
   });
 
   socket.on(EVENT_DONE_FITWICK_NEW, (fitwick: IFitwick) => {
@@ -302,10 +348,6 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
         1
       );
     });
-  });
-
-  socket.on("message", (message: string) => {
-    logMessage(socket, message);
   });
 };
 
