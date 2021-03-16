@@ -16,8 +16,8 @@ import {
   EVENT_MESSAGE,
   EVENT_WORLD_DATA,
 } from "./api/events";
-import worldModel from "./models/world";
-import userModel from "./models/user";
+import worldModel, { IWorldDocument } from "./models/world";
+import userModel, { IUserDocument } from "./models/user";
 import { FITWICKS, FitwickTheme } from "./fitwicks";
 const debug = require("debug")("fitw-server:server");
 
@@ -28,13 +28,13 @@ interface Message {
 }
 
 interface LivePlayer {
-  user: IUser;
+  user: IUserDocument;
   worldId: IWorld["id"];
   userModified: boolean;
 }
 
 interface LiveWorld {
-  world: IWorld;
+  world: IWorldDocument;
   playersInWorld: Socket[];
   worldModified: boolean;
 }
@@ -104,10 +104,25 @@ const findFitwick = (world: IWorld, fitwick: IFitwick) => {
   );
 };
 
+const createWorld = async (worldName: string) => {
+  try {
+    const newWorld = new worldModel({
+      name: worldName,
+      background: "",
+      fitwicks: [],
+    });
+    await newWorld.save();
+    debug(`Created new world "${worldName}" in DB`);
+    return newWorld;
+  } catch (error) {
+    debug(`Error creating new world "${worldName}" in DB: ${error}`);
+  }
+  return undefined;
+};
+
 const loadWorld = async (worldId: IWorld["id"]) => {
   try {
-    const worldInDB = await worldModel.findById(worldId);
-    return worldInDB;
+    return await worldModel.findById(worldId);
   } catch (error) {
     debug(`Error loading world with ID ${worldId} from DB: ${error}`);
   }
@@ -116,18 +131,9 @@ const loadWorld = async (worldId: IWorld["id"]) => {
 
 const saveWorld = async (liveWorld: LiveWorld) => {
   try {
-    const worldInDB = await worldModel.findById(liveWorld.world.id);
-    if (worldInDB) {
-      await worldInDB.updateOne(liveWorld.world);
-      debug(`Updated world "${liveWorld.world.name}" in DB`);
-    } else {
-      const newWorld = new worldModel({
-        _id: liveWorld.world.id,
-        ...liveWorld.world,
-      });
-      await newWorld.save();
-      debug(`Created new world "${liveWorld.world.name}" in DB`);
-    }
+    await liveWorld.world.save();
+    debug(`Updated world "${liveWorld.world.name}" in DB`);
+    liveWorld.worldModified = false;
   } catch (error) {
     debug(`Error saving world "${liveWorld.world.name}" to DB: ${error}`);
   }
@@ -135,8 +141,7 @@ const saveWorld = async (liveWorld: LiveWorld) => {
 
 const loadUser = async (userId: IUser["id"]) => {
   try {
-    const userInDB = await userModel.findById(userId);
-    return userInDB;
+    return await userModel.findById(userId);
   } catch (error) {
     debug(`Error loading user with ID ${userId} from DB: ${error}`);
   }
@@ -145,12 +150,9 @@ const loadUser = async (userId: IUser["id"]) => {
 
 const saveUser = async (player: LivePlayer) => {
   try {
-    const userInDB = await userModel.findById(player.user.id);
-    if (userInDB) {
-      await userInDB.updateOne(player.user);
-    }
-    player.userModified = false;
+    await player.user.save();
     debug(`Saved user "${player.user.username}" to DB`);
+    player.userModified = false;
   } catch (error) {
     debug(`Error saving user "${player.user.username}" to DB: ${error}`);
   }
@@ -178,29 +180,26 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
         return;
       }
 
-      let userModified = false;
-      let world = undefined;
+      let world: IWorldDocument | null | undefined = undefined;
 
-      if (!worldId) {
-        user.stats.createdWorlds++;
-        userModified = true;
-        // generate a new world ID for newly created worlds
-        worldId = Types.ObjectId();
-        world = {
-          id: worldId,
-          name: worldName,
-          background: "",
-          fitwicks: [],
-        };
+      if (!worldId || !liveWorlds.has(worldId)) {
+        if (!worldId) {
+          user.stats.createdWorlds++;
+          world = await createWorld(worldName);
+        } else {
+          world = await loadWorld(worldId);
+        }
 
-        liveWorlds.set(worldId, {
+        if (!world) {
+          logMessage(socket, `no world with ID ${worldId} found in DB!`);
+          return;
+        }
+        liveWorlds.set(world.id, {
           world,
           playersInWorld: [socket],
-          // ensure that the new world is saved back even if empty
-          // because it gets added to user worlds
-          worldModified: true,
+          worldModified: false,
         });
-      } else if (liveWorlds.has(worldId)) {
+      } else {
         const liveWorld = liveWorlds.get(worldId)!;
         world = liveWorld.world;
 
@@ -214,6 +213,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
           }
         } else {
           world.name = worldName;
+          liveWorld.worldModified = true;
           for (const otherPlayer of liveWorld.playersInWorld) {
             otherPlayer.emit(
               EVENT_MESSAGE,
@@ -224,25 +224,14 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
         }
 
         liveWorld.playersInWorld.push(socket);
-      } else {
-        world = await loadWorld(worldId);
-        if (!world) {
-          logMessage(socket, `no world with ID ${worldId} found in DB!`);
-          return;
-        }
-
-        liveWorlds.set(world.id, {
-          world,
-          playersInWorld: [socket],
-          worldModified: false,
-        });
       }
 
       // only set up a live player if successfully loaded both user and world
       livePlayers.set(socket.id, {
         user,
         worldId,
-        userModified,
+        // if the world was new (no ID), it gets added to the user worlds list
+        userModified: !worldId,
       });
 
       socket.emit(EVENT_WORLD_DATA, world);
