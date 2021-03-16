@@ -357,7 +357,6 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
           // if it is today, no need to add a new element, just increment points
           const lastDatePoints =
             livePlayer.user.datesPoints[livePlayer.user.datesPoints.length - 1];
-          debug(lastDatePoints.date);
           if (
             lastDatePoints.date.getFullYear() === todayMidnight.getFullYear() &&
             lastDatePoints.date.getMonth() === todayMidnight.getMonth() &&

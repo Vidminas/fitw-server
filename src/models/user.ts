@@ -40,12 +40,10 @@ const userSchemaDefinition: ModelDefinition<IUser> = {
       ref: "World",
     },
   ],
-  createdFitwicks: [
-    {
-      type: Schema.Types.Map,
-      of: Number,
-    },
-  ],
+  createdFitwicks: {
+    type: Schema.Types.Map,
+    of: Number,
+  },
   datesPoints: [pointsSchema],
   stats: {
     createdWorlds: { type: Number, default: 0 },
