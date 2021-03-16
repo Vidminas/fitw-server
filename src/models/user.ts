@@ -2,6 +2,22 @@ import { Schema, Document, model } from "mongoose";
 import IUser from "../api/user";
 import { ModelDefinition } from "./utils";
 
+const pointsSchema = new Schema(
+  {
+    date: {
+      type: Date,
+      required: true,
+    },
+    points: {
+      type: Number,
+      required: true,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
 const userSchemaDefinition: ModelDefinition<IUser> = {
   emailHash: {
     type: String,
@@ -24,17 +40,23 @@ const userSchemaDefinition: ModelDefinition<IUser> = {
       ref: "World",
     },
   ],
-  uniqueObjectList: [String],
+  createdFitwicks: [
+    {
+      type: Schema.Types.Map,
+      of: Number,
+    },
+  ],
+  datesPoints: [pointsSchema],
   stats: {
-    createdWorlds: { type: Number },
-    createdTotalObjects: { type: Number },
-    createdUniqueObjects: { type: Number },
-    createdUniqueWinterObjects: { type: Number },
-    createdUniqueToolObjects: { type: Number },
-    createdUniqueCookingObjects: { type: Number },
-    createdUniqueElectronicsObjects: { type: Number },
-    createdUniqueDesertObjects: { type: Number },
-    createdUniqueTreeObjects: { type: Number },
+    createdWorlds: { type: Number, default: 0 },
+    createdTotalObjects: { type: Number, default: 0 },
+    createdUniqueObjects: { type: Number, default: 0 },
+    createdUniqueWinterObjects: { type: Number, default: 0 },
+    createdUniqueToolObjects: { type: Number, default: 0 },
+    createdUniqueCookingObjects: { type: Number, default: 0 },
+    createdUniqueElectronicsObjects: { type: Number, default: 0 },
+    createdUniqueDesertObjects: { type: Number, default: 0 },
+    createdUniqueTreeObjects: { type: Number, default: 0 },
   },
 };
 
@@ -49,7 +71,7 @@ userSchema.set("toJSON", {
   versionKey: false,
   transform: function (doc: any, ret: IUserDocument) {
     delete ret._id;
-    delete ret.uniqueObjectList;
+    delete ret.createdFitwicks;
   },
 });
 

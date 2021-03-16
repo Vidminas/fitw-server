@@ -14,6 +14,7 @@ import {
   EVENT_FITWICK_PICK_UP,
   EVENT_DONE_FITWICK_DELETE,
   EVENT_MESSAGE,
+  EVENT_WORLD_DATA,
 } from "./api/events";
 import worldModel from "./models/world";
 import userModel from "./models/user";
@@ -28,11 +29,12 @@ interface Message {
 
 interface LivePlayer {
   user: IUser;
-  world: IWorld;
+  worldId: IWorld["id"];
   userModified: boolean;
 }
 
 interface LiveWorld {
+  world: IWorld;
   playersInWorld: Socket[];
   worldModified: boolean;
 }
@@ -69,7 +71,7 @@ const modifyPlayerWorld = (
 
   const livePlayer = livePlayers.get(socket.id)!;
 
-  if (!liveWorlds.has(livePlayer.world.id)) {
+  if (!liveWorlds.has(livePlayer.worldId)) {
     logMessage(
       socket,
       `Player ${livePlayer.user.username} attempted to modify non-live world!`
@@ -77,9 +79,9 @@ const modifyPlayerWorld = (
     return;
   }
 
-  const liveWorld = liveWorlds.get(livePlayer.world.id)!;
+  const liveWorld = liveWorlds.get(livePlayer.worldId)!;
   liveWorld.worldModified = true;
-  handler(livePlayer.world);
+  handler(liveWorld.world);
 
   for (const otherPlayer of liveWorld.playersInWorld) {
     if (otherPlayer.id !== socket.id) {
@@ -102,23 +104,43 @@ const findFitwick = (world: IWorld, fitwick: IFitwick) => {
   );
 };
 
-const saveWorld = async (player: LivePlayer) => {
+const loadWorld = async (worldId: IWorld["id"]) => {
   try {
-    const worldInDB = await worldModel.findById(player.world.id);
+    const worldInDB = await worldModel.findById(worldId);
+    return worldInDB;
+  } catch (error) {
+    debug(`Error loading world with ID ${worldId} from DB: ${error}`);
+  }
+  return undefined;
+};
+
+const saveWorld = async (liveWorld: LiveWorld) => {
+  try {
+    const worldInDB = await worldModel.findById(liveWorld.world.id);
     if (worldInDB) {
-      await worldInDB.updateOne(player.world);
-      debug(`Updated world "${player.world.name}" in DB`);
+      await worldInDB.updateOne(liveWorld.world);
+      debug(`Updated world "${liveWorld.world.name}" in DB`);
     } else {
       const newWorld = new worldModel({
-        _id: player.world.id,
-        ...player.world,
+        _id: liveWorld.world.id,
+        ...liveWorld.world,
       });
       await newWorld.save();
-      debug(`Created new world "${player.world.name}" in DB`);
+      debug(`Created new world "${liveWorld.world.name}" in DB`);
     }
   } catch (error) {
-    debug(`Error saving world "${player.world.name}" to DB: ${error}`);
+    debug(`Error saving world "${liveWorld.world.name}" to DB: ${error}`);
   }
+};
+
+const loadUser = async (userId: IUser["id"]) => {
+  try {
+    const userInDB = await userModel.findById(userId);
+    return userInDB;
+  } catch (error) {
+    debug(`Error loading user with ID ${userId} from DB: ${error}`);
+  }
+  return undefined;
 };
 
 const saveUser = async (player: LivePlayer) => {
@@ -139,108 +161,168 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
   // this function is called when a client connects in server.ts
   logMessage(socket, "connected");
 
-  socket.on(EVENT_WORLD_ENTER, (user: IUser, world: IWorld) => {
-    if (!user || !world) {
+  socket.on(
+    EVENT_WORLD_ENTER,
+    async (userId: IUser["id"], worldId: IWorld["id"], worldName: string) => {
+      if (!userId || !worldName) {
+        logMessage(
+          socket,
+          `attempted to enter world ${worldName} with user ID ${userId}`
+        );
+        return;
+      }
+
+      const user = await loadUser(userId);
+      if (!user) {
+        logMessage(socket, `no user with ID ${userId} found in DB!`);
+        return;
+      }
+
+      let userModified = false;
+      let world = undefined;
+
+      if (!worldId) {
+        user.stats.createdWorlds++;
+        userModified = true;
+        // generate a new world ID for newly created worlds
+        worldId = Types.ObjectId();
+        world = {
+          id: worldId,
+          name: worldName,
+          background: "",
+          fitwicks: [],
+        };
+
+        liveWorlds.set(worldId, {
+          world,
+          playersInWorld: [socket],
+          // ensure that the new world is saved back even if empty
+          // because it gets added to user worlds
+          worldModified: true,
+        });
+      } else if (liveWorlds.has(worldId)) {
+        const liveWorld = liveWorlds.get(worldId)!;
+        world = liveWorld.world;
+
+        if (world.name === worldName) {
+          for (const otherPlayer of liveWorld.playersInWorld) {
+            otherPlayer.emit(
+              EVENT_MESSAGE,
+              "primary",
+              `${user.username} joined the world!`
+            );
+          }
+        } else {
+          world.name = worldName;
+          for (const otherPlayer of liveWorld.playersInWorld) {
+            otherPlayer.emit(
+              EVENT_MESSAGE,
+              "primary",
+              `${user.username} joined the world and changed its name to ${worldName}!`
+            );
+          }
+        }
+
+        liveWorld.playersInWorld.push(socket);
+      } else {
+        world = await loadWorld(worldId);
+        if (!world) {
+          logMessage(socket, `no world with ID ${worldId} found in DB!`);
+          return;
+        }
+
+        liveWorlds.set(world.id, {
+          world,
+          playersInWorld: [socket],
+          worldModified: false,
+        });
+      }
+
+      // only set up a live player if successfully loaded both user and world
+      livePlayers.set(socket.id, {
+        user,
+        worldId,
+        userModified,
+      });
+
+      socket.emit(EVENT_WORLD_DATA, world);
+      logMessage(socket, `${user.username} entered ${worldName}`);
+    }
+  );
+
+  socket.on(EVENT_WORLD_EXIT, () => {
+    if (!livePlayers.has(socket.id)) {
+      logMessage(socket, "non-live player attempted to leave the world!");
+      return;
+    }
+    const livePlayer = livePlayers.get(socket.id)!;
+
+    if (!liveWorlds.has(livePlayer.worldId)) {
       logMessage(
         socket,
-        `attempted to enter ${world?.name} as ${user?.username}`
+        `attempted to leave non-live world with ID ${livePlayer.worldId}!`
       );
       return;
     }
+    const liveWorld = liveWorlds.get(livePlayer.worldId)!;
 
-    logMessage(socket, `${user.username} entered ${world.name}`);
-    livePlayers.set(socket.id, {
-      user,
-      world,
-      userModified: !world.id,
-    });
+    if (!livePlayer.user.worlds.includes(livePlayer.worldId)) {
+      logMessage(
+        socket,
+        `Added world "${liveWorld.world.name}" to ${livePlayer.user.username}'s worlds`
+      );
+      livePlayer.user.worlds.push(livePlayer.worldId);
+      livePlayer.userModified = true;
+    }
 
-    // generate a new world ID for newly created worlds
-    if (!world.id) {
-      user.stats.createdWorlds++;
-      world.id = Types.ObjectId();
-      liveWorlds.set(world.id, {
-        playersInWorld: [socket],
-        // ensure that the new world is saved back even if empty
-        // because it gets added to user worlds
-        worldModified: true,
-      });
-    } else if (liveWorlds.has(world.id)) {
-      const liveWorld = liveWorlds.get(world.id)!;
-      for (const otherPlayer of liveWorld.playersInWorld) {
+    for (const otherPlayer of liveWorld.playersInWorld) {
+      if (otherPlayer.id !== socket.id) {
         otherPlayer.emit(
           EVENT_MESSAGE,
           "primary",
-          `${user.username} joined the world!`
+          `${livePlayer.user.username} left the world!`
         );
       }
-      liveWorld.playersInWorld.push(socket);
-    } else {
-      liveWorlds.set(world.id, {
-        playersInWorld: [socket],
-        worldModified: false,
-      });
     }
-  });
 
-  socket.on(EVENT_WORLD_EXIT, () => {
     logMessage(socket, "left the world");
-    if (livePlayers.has(socket.id)) {
-      const livePlayer = livePlayers.get(socket.id)!;
-      if (!livePlayer.user.worlds.includes(livePlayer.world.id)) {
-        logMessage(
-          socket,
-          `Added world "${livePlayer.world.name}" to ${livePlayer.user.username}'s worlds`
-        );
-        livePlayer.user.worlds.push(livePlayer.world.id);
-        livePlayer.userModified = true;
-      }
-
-      const liveWorld = liveWorlds.get(livePlayer.world.id)!;
-      for (const otherPlayer of liveWorld.playersInWorld) {
-        if (otherPlayer.id !== socket.id) {
-          otherPlayer.emit(
-            EVENT_MESSAGE,
-            "primary",
-            `${livePlayer.user.username} left the world!`
-          );
-        }
-      }
-    }
   });
 
   socket.on(EVENT_DISCONNECT, async () => {
-    logMessage(socket, "disconnected");
-    if (livePlayers.has(socket.id)) {
-      const player = livePlayers.get(socket.id)!;
-      const liveWorld = liveWorlds.get(player.world.id);
-
-      if (liveWorld) {
-        if (liveWorld.worldModified) {
-          saveWorld(player);
-        }
-
-        if (
-          !liveWorld.playersInWorld ||
-          liveWorld.playersInWorld[0].id === socket.id
-        ) {
-          liveWorlds.delete(player.world.id);
-        } else {
-          liveWorld.playersInWorld.splice(
-            liveWorld.playersInWorld.findIndex(
-              (playerSocket) => playerSocket.id === socket.id
-            ),
-            1
-          );
-        }
-      }
-
-      if (player.userModified) {
-        saveUser(player);
-      }
-
-      livePlayers.delete(socket.id);
+    if (!livePlayers.has(socket.id)) {
+      logMessage(socket, "non-live player disconnected!");
+      return;
     }
+    const livePlayer = livePlayers.get(socket.id)!;
+
+    const liveWorld = liveWorlds.get(livePlayer.worldId);
+    if (liveWorld) {
+      if (liveWorld.worldModified) {
+        saveWorld(liveWorld);
+      }
+
+      if (
+        !liveWorld.playersInWorld.length ||
+        (liveWorld.playersInWorld.length === 1 &&
+          liveWorld.playersInWorld[0].id === socket.id)
+      ) {
+        liveWorlds.delete(livePlayer.worldId);
+      } else {
+        liveWorld.playersInWorld.splice(
+          liveWorld.playersInWorld.findIndex(
+            (playerSocket) => playerSocket.id === socket.id
+          ),
+          1
+        );
+      }
+    }
+
+    if (livePlayer.userModified) {
+      saveUser(livePlayer);
+    }
+
+    livePlayers.delete(socket.id);
+    logMessage(socket, "disconnected");
   });
 
   socket.on(EVENT_WORLD_CHANGE_BACKGROUND, (newBackgroundTexture: string) => {
@@ -266,10 +348,55 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       livePlayer.user.stats.createdTotalObjects++;
       livePlayer.userModified = true;
 
-      if (!livePlayer.user.uniqueObjectList) {
-        livePlayer.user.uniqueObjectList = [fitwick.name];
-      } else if (!livePlayer.user.uniqueObjectList.includes(fitwick.name)) {
-        livePlayer.user.uniqueObjectList.push(fitwick.name);
+      const updatePoints = (pointsEarned: number) => {
+        // datePoints are [date, points collected on that date] pairs
+        const today = new Date();
+        const todayMidnight = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate()
+        );
+        if (
+          !livePlayer.user.datesPoints ||
+          !livePlayer.user.datesPoints.length
+        ) {
+          livePlayer.user.datesPoints = [
+            { date: todayMidnight, points: pointsEarned },
+          ];
+        } else {
+          // by nature, datePoints are always sorted, so last element is most recent date
+          // if it is today, no need to add a new element, just increment points
+          const lastDatePoints =
+            livePlayer.user.datesPoints[livePlayer.user.datesPoints.length - 1];
+          debug(lastDatePoints.date);
+          if (
+            lastDatePoints.date.getFullYear() === todayMidnight.getFullYear() &&
+            lastDatePoints.date.getMonth() === todayMidnight.getMonth() &&
+            lastDatePoints.date.getDate() === todayMidnight.getDate()
+          ) {
+            lastDatePoints.points += pointsEarned;
+          } else {
+            livePlayer.user.datesPoints.push({
+              date: todayMidnight,
+              points: pointsEarned,
+            });
+          }
+        }
+      };
+
+      if (!livePlayer.user.createdFitwicks) {
+        // the map consists of pairs of [fitwick name, times this fitwick has been placed]
+        livePlayer.user.createdFitwicks = new Map<string, number>();
+      }
+
+      const fitwickCreateCount = livePlayer.user.createdFitwicks.get(
+        fitwick.name
+      );
+      // whether it's 0 or undefined, the same applies (it should never be 0 though)
+      if (!fitwickCreateCount) {
+        livePlayer.user.createdFitwicks.set(fitwick.name, 1);
+        updatePoints(10);
+
         livePlayer.user.stats.createdUniqueObjects++;
 
         if (FITWICKS.has(fitwick.name)) {
@@ -293,6 +420,14 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
             livePlayer.user.stats.createdUniqueWinterObjects++;
           }
         }
+      } else {
+        // the player has placed this fitwick before
+        livePlayer.user.createdFitwicks.set(
+          fitwick.name,
+          fitwickCreateCount + 1
+        );
+        // a simple decay function -> 1-6 fitwicks give some points, 7-20 fitwicks give 1 point, 21+ give no points
+        updatePoints(Math.round(10.0 / (1 + fitwickCreateCount)));
       }
     }
 

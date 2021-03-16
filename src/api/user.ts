@@ -4,7 +4,11 @@ interface IUser {
   username: string;
   groups: any[];
   worlds: any[];
-  uniqueObjectList?: string[];
+  createdFitwicks?: Map<string, number>;
+  datesPoints: {
+    date: Date;
+    points: number;
+  }[];
   stats: {
     createdWorlds: number;
     createdTotalObjects: number;

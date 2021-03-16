@@ -5,6 +5,7 @@ export const EVENT_DISCONNECT = "disconnect";
 // as long as the server and client match up
 export const EVENT_MESSAGE = "message";
 export const EVENT_WORLD_ENTER = "world/enter";
+export const EVENT_WORLD_DATA = "world/get-data-from-server";
 export const EVENT_WORLD_CHANGE_BACKGROUND = "world/change-background";
 export const EVENT_WORLD_EXIT = "world/exit";
 export const EVENT_NAVIGATE_HOME = "world/exit-and-nav-home";
