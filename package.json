@@ -21,7 +21,7 @@
     "mongoose": "^5.11.19",
     "passport": "^0.4.1",
     "passport-magic-login": "^1.0.7",
-    "socket.io": "^3.1.0"
+    "socket.io": "^4.0.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^3.0.0",

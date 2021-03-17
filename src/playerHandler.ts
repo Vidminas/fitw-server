@@ -165,7 +165,12 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
 
   socket.on(
     EVENT_WORLD_ENTER,
-    async (userId: IUser["id"], worldId: IWorld["id"], worldName: string) => {
+    async (
+      userId: IUser["id"],
+      worldId: IWorld["id"],
+      worldName: string,
+      callback
+    ) => {
       if (!userId || !worldName) {
         logMessage(
           socket,
@@ -234,7 +239,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
         userModified: !worldId,
       });
 
-      socket.emit(EVENT_WORLD_DATA, world);
+      callback(world.toJSON());
       logMessage(socket, `${user.username} entered ${worldName}`);
     }
   );
