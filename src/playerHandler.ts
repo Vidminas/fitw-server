@@ -1,4 +1,3 @@
-import { Types } from "mongoose";
 import { Server, Socket } from "socket.io";
 import IFitwick from "./api/fitwick";
 import IUser from "./api/user";
@@ -14,19 +13,17 @@ import {
   EVENT_FITWICK_PICK_UP,
   EVENT_DONE_FITWICK_DELETE,
   EVENT_MESSAGE,
-  EVENT_WORLD_DATA,
 } from "./api/events";
 import worldModel, { IWorldDocument } from "./models/world";
 import userModel, { IUserDocument } from "./models/user";
 import { FITWICKS, FitwickTheme } from "./fitwicks";
 import { getToday, isSameDay } from "./time";
+import {
+  adminUpdatePlayerCount,
+  adminUpdateWorldCount,
+  logServerMessage,
+} from "./adminHandler";
 const debug = require("debug")("fitw-server:server");
-
-interface Message {
-  readonly username: string;
-  readonly date: string;
-  readonly text: string;
-}
 
 interface LivePlayer {
   user: IUserDocument;
@@ -40,19 +37,16 @@ interface LiveWorld {
   worldModified: boolean;
 }
 
-export const messages: Message[] = [];
 // maps socket ID to user/world
 export const livePlayers = new Map<Socket["id"], LivePlayer>();
 // maps world ID to players currently in that world
 export const liveWorlds = new Map<IWorld["id"], LiveWorld>();
 
-const logMessage = (socket: Socket, message: string) => {
-  const currentDate = new Date().toLocaleString();
+const logPlayerMessage = (socket: Socket, message: string) => {
   const username = livePlayers.has(socket.id)
     ? livePlayers.get(socket.id)?.user.username
     : socket.id;
-  debug(`[${currentDate}] ${username}: ${message}`);
-  messages.unshift({ username: username!, date: currentDate, text: message });
+  logServerMessage({ username: username!, text: message });
 };
 
 const modifyPlayerWorld = (
@@ -63,7 +57,7 @@ const modifyPlayerWorld = (
   ...args: any[]
 ) => {
   if (!livePlayers.has(socket.id)) {
-    logMessage(
+    logPlayerMessage(
       socket,
       `Non live player ${socket.id} attempted to modify world!`
     );
@@ -73,7 +67,7 @@ const modifyPlayerWorld = (
   const livePlayer = livePlayers.get(socket.id)!;
 
   if (!liveWorlds.has(livePlayer.worldId)) {
-    logMessage(
+    logPlayerMessage(
       socket,
       `Player ${livePlayer.user.username} attempted to modify non-live world!`
     );
@@ -162,7 +156,12 @@ const saveUser = async (player: LivePlayer) => {
 const registerPlayerHandlers = (io: Server, socket: Socket) => {
   // the connection event here is implicit:
   // this function is called when a client connects in server.ts
-  logMessage(socket, "connected");
+  if (!socket.handshake.xdomain) {
+    // the socket comes from the same domain - this is the admin front-end interface
+    return;
+  }
+
+  logPlayerMessage(socket, "connected");
 
   socket.on(
     EVENT_WORLD_ENTER,
@@ -173,7 +172,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       callback
     ) => {
       if (!userId || !worldName) {
-        logMessage(
+        logPlayerMessage(
           socket,
           `attempted to enter world ${worldName} with user ID ${userId}`
         );
@@ -182,7 +181,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
 
       const user = await loadUser(userId);
       if (!user) {
-        logMessage(socket, `no user with ID ${userId} found in DB!`);
+        logPlayerMessage(socket, `no user with ID ${userId} found in DB!`);
         return;
       }
 
@@ -197,7 +196,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
         }
 
         if (!world) {
-          logMessage(socket, `no world with ID ${worldId} found in DB!`);
+          logPlayerMessage(socket, `no world with ID ${worldId} found in DB!`);
           return;
         }
         liveWorlds.set(world.id, {
@@ -205,6 +204,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
           playersInWorld: [socket],
           worldModified: false,
         });
+        adminUpdateWorldCount();
       } else {
         const liveWorld = liveWorlds.get(worldId)!;
         world = liveWorld.world;
@@ -239,21 +239,22 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
         // if the world was new (no ID), it gets added to the user worlds list
         userModified: !worldId,
       });
+      adminUpdatePlayerCount();
 
       callback(world.toJSON());
-      logMessage(socket, `${user.username} entered ${worldName}`);
+      logPlayerMessage(socket, `${user.username} entered ${worldName}`);
     }
   );
 
   socket.on(EVENT_WORLD_EXIT, () => {
     if (!livePlayers.has(socket.id)) {
-      logMessage(socket, "non-live player attempted to leave the world!");
+      logPlayerMessage(socket, "non-live player attempted to leave the world!");
       return;
     }
     const livePlayer = livePlayers.get(socket.id)!;
 
     if (!liveWorlds.has(livePlayer.worldId)) {
-      logMessage(
+      logPlayerMessage(
         socket,
         `attempted to leave non-live world with ID ${livePlayer.worldId}!`
       );
@@ -262,7 +263,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
     const liveWorld = liveWorlds.get(livePlayer.worldId)!;
 
     if (!livePlayer.user.worlds.includes(livePlayer.worldId)) {
-      logMessage(
+      logPlayerMessage(
         socket,
         `Added world "${liveWorld.world.name}" to ${livePlayer.user.username}'s worlds`
       );
@@ -280,12 +281,12 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
       }
     }
 
-    logMessage(socket, "left the world");
+    logPlayerMessage(socket, "left the world");
   });
 
   socket.on(EVENT_DISCONNECT, async () => {
     if (!livePlayers.has(socket.id)) {
-      logMessage(socket, "non-live player disconnected!");
+      logPlayerMessage(socket, "non-live player disconnected!");
       return;
     }
     const livePlayer = livePlayers.get(socket.id)!;
@@ -302,6 +303,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
           liveWorld.playersInWorld[0].id === socket.id)
       ) {
         liveWorlds.delete(livePlayer.worldId);
+        adminUpdateWorldCount();
       } else {
         liveWorld.playersInWorld.splice(
           liveWorld.playersInWorld.findIndex(
@@ -317,11 +319,12 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
     }
 
     livePlayers.delete(socket.id);
-    logMessage(socket, "disconnected");
+    adminUpdatePlayerCount();
+    logPlayerMessage(socket, "disconnected");
   });
 
   socket.on(EVENT_WORLD_CHANGE_BACKGROUND, (newBackgroundTexture: string) => {
-    logMessage(socket, `changed background to ${newBackgroundTexture}`);
+    logPlayerMessage(socket, `changed background to ${newBackgroundTexture}`);
     modifyPlayerWorld(
       socket,
       (world: IWorld) => {
@@ -334,7 +337,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
   });
 
   socket.on(EVENT_DONE_FITWICK_NEW, (fitwick: IFitwick) => {
-    logMessage(
+    logPlayerMessage(
       socket,
       `created new fitwick ${fitwick.name} at [${fitwick.x},${fitwick.y}]`
     );
@@ -449,7 +452,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
   });
 
   socket.on(EVENT_DONE_FITWICK_PLACE, (fitwick: IFitwick) => {
-    logMessage(
+    logPlayerMessage(
       socket,
       `placed fitwick ${fitwick.name} at [${fitwick.x},${fitwick.y}]`
     );
@@ -469,7 +472,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
   });
 
   socket.on(EVENT_FITWICK_PICK_UP, (fitwick: IFitwick) => {
-    logMessage(
+    logPlayerMessage(
       socket,
       `picked up fitwick ${fitwick.name} from [${fitwick.x},${fitwick.y}]`
     );
@@ -484,7 +487,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
   });
 
   socket.on(EVENT_DONE_FITWICK_DELETE, (fitwick: IFitwick) => {
-    logMessage(
+    logPlayerMessage(
       socket,
       `deleted fitwick ${fitwick.name} at [${fitwick.x},${fitwick.y}]`
     );

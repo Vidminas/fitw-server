@@ -14,8 +14,9 @@ const debug = require("debug")("fitw-server:server");
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
 import app from "./app";
-import registerPlayerHandlers from "./playerHandler";
 import { initializeDB } from "./mongodb";
+import registerPlayerHandlers from "./playerHandler";
+import registerAdminHandlers from "./adminHandler";
 
 /**
  * Test connection to the database and ensure the users table exists
@@ -36,7 +37,6 @@ app.set("port", port);
 const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
-  serveClient: false,
   cors: {
     origin: process.env.CLIENT_URL,
     methods: ["GET", "POST"],
@@ -45,6 +45,7 @@ const io = new Server(httpServer, {
   perMessageDeflate: false,
 });
 io.on("connection", (socket: Socket) => {
+  registerAdminHandlers(io, socket);
   registerPlayerHandlers(io, socket);
 });
 

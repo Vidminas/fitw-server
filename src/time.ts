@@ -1,9 +1,15 @@
-const dateRightNow = new Date();
-let TODAY = new Date(
-  dateRightNow.getFullYear(),
-  dateRightNow.getMonth(),
-  dateRightNow.getDate()
-);
+let TODAY: Date;
+
+{
+  // enclose in a block so that the reference to dateRightNow
+  // can be deleted after setting TODAY
+  const dateRightNow = new Date();
+  TODAY = new Date(
+    dateRightNow.getFullYear(),
+    dateRightNow.getMonth(),
+    dateRightNow.getDate()
+  );
+}
 
 export const getToday = () => TODAY;
 export const makeItTomorrow = () => TODAY.setDate(TODAY.getDate() + 1);

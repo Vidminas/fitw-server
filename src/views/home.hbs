@@ -1,20 +1,63 @@
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  socket.on("{{ events.SERVER_EVENT_LOG_MESSAGE }}", (message) => {
+    const messageList = document.getElementById("messageList");
+    const newMessage = document.createElement("li");
+    newMessage.appendChild(document.createTextNode(`[${message.date}] ${message.username}: ${message.text}`));
+    messageList.insertBefore(newMessage, messageList.firstChild);
+  });
+
+  socket.on("{{ events.SERVER_EVENT_PLAYER_COUNT_CHANGED }}", (newCount) => {
+    document.getElementById("numLivePlayers").innerHTML = newCount;
+  });
+
+  socket.on("{{ events.SERVER_EVENT_WORLD_COUNT_CHANGED }}", (newCount) => {
+    document.getElementById("numLiveWorlds").innerHTML = newCount;
+  });
+
+  const makeItTomorrow = () => {
+    socket.emit("{{ events.SERVER_EVENT_TOMORROW }}", (today) => {
+      document.getElementById("today").innerHTML = today;
+    });
+  };
+
+  const makeItYesterday = () => {
+    socket.emit("{{ events.SERVER_EVENT_YESTERDAY }}", (today) => {
+      document.getElementById("today").innerHTML = today;
+    });
+  }
+</script>
 <h1>Fill In The World</h1>
 <p>
-    <span>
-        You have reached the live Fill In The World Server.
-        There is nothing else to see here.
-        To play the game, please visit
-    </span>
-    <a href="https://fitw.azurewebsites.net/">https://fitw.azurewebsites.net/</a>
+  <span>
+    You have reached the live Fill In The World Server.
+    There is nothing else to see here.
+    To play the game, please visit
+  </span>
+  <a href="https://fitw.azurewebsites.net/">https://fitw.azurewebsites.net/</a>
 </p>
 <p>
-    There are {{numLivePlayers}} currently connected players in {{numLiveWorlds}} worlds.
+  <span>There are </span>
+  <span id="numLivePlayers">{{numLivePlayers}}</span>
+  <span> currently connected players in </span>
+  <span id="numLiveWorlds">{{numLiveWorlds}}</span>
+  <span> worlds.</span>
+</p>
+<p>
+  <span>The current server date is </span>
+  <span id="today">{{today}}</span>
 </p>
 <div>
-    <label>Server messages:</label>
-    <ul>
-        {{#each messages}}
-        <li>[{{date}}] {{this.username}}: {{this.text}}</li>
-        {{/each}}
-    </ul>
+  <button onclick="makeItTomorrow()">Make it tomorrow!</button>
+  <button onclick="makeItYesterday()">Make it yesterday!</button>
+</div>
+<div>
+  <label>Server log:</label>
+  <ul id="messageList">
+    {{#each serverLogMessages}}
+    <li>[{{date}}] {{this.username}}: {{this.text}}</li>
+    {{/each}}
+  </ul>
 </div>
