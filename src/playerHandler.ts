@@ -19,6 +19,7 @@ import {
 import worldModel, { IWorldDocument } from "./models/world";
 import userModel, { IUserDocument } from "./models/user";
 import { FITWICKS, FitwickTheme } from "./fitwicks";
+import { getToday, isSameDay } from "./time";
 const debug = require("debug")("fitw-server:server");
 
 interface Message {
@@ -344,33 +345,23 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
 
       const updatePoints = (pointsEarned: number) => {
         // datePoints are [date, points collected on that date] pairs
-        const today = new Date();
-        const todayMidnight = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate()
-        );
         if (
           !livePlayer.user.datesPoints ||
           !livePlayer.user.datesPoints.length
         ) {
           livePlayer.user.datesPoints = [
-            { date: todayMidnight, points: pointsEarned },
+            { date: getToday(), points: pointsEarned },
           ];
         } else {
           // by nature, datePoints are always sorted, so last element is most recent date
           // if it is today, no need to add a new element, just increment points
           const lastDatePoints =
             livePlayer.user.datesPoints[livePlayer.user.datesPoints.length - 1];
-          if (
-            lastDatePoints.date.getFullYear() === todayMidnight.getFullYear() &&
-            lastDatePoints.date.getMonth() === todayMidnight.getMonth() &&
-            lastDatePoints.date.getDate() === todayMidnight.getDate()
-          ) {
+          if (isSameDay(getToday(), lastDatePoints.date)) {
             lastDatePoints.points += pointsEarned;
           } else {
             livePlayer.user.datesPoints.push({
-              date: todayMidnight,
+              date: getToday(),
               points: pointsEarned,
             });
           }

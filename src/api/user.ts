@@ -9,6 +9,7 @@ interface IUser {
     date: Date;
     points: number;
   }[];
+  winningStreak: number;
   stats: {
     createdWorlds: number;
     createdTotalObjects: number;

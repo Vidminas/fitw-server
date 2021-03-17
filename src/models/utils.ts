@@ -21,7 +21,9 @@ type Field<T> =
   | FieldType<T>;
 
 export type ModelDefinition<M> = {
-  [P in keyof M as Exclude<P, "id">]-?: M[P] extends Array<infer U>
+  [P in keyof M as Exclude<P, "id" | "winningStreak">]-?: M[P] extends Array<
+    infer U
+  >
     ? Array<Field<U>>
     : Field<M[P]>;
 };

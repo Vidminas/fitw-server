@@ -1,5 +1,6 @@
 import { Schema, Document, model } from "mongoose";
 import IUser from "../api/user";
+import { getToday, isDayBefore, isSameDay } from "../time";
 import { ModelDefinition } from "./utils";
 
 const pointsSchema = new Schema(
@@ -64,6 +65,34 @@ export interface IUserDocument extends IUser, Document {
 }
 
 const userSchema = new Schema(userSchemaDefinition, { timestamps: true });
+userSchema.virtual("winningStreak").get(function (this: IUserDocument) {
+  if (!this.datesPoints || !this.datesPoints.length) {
+    return 0;
+  }
+  // assume that the points can never be in the future and are ordered
+  // then the most recent day has to be the last element
+  const mostRecentDate = this.datesPoints[this.datesPoints.length - 1].date;
+  const today = getToday();
+  if (
+    !isSameDay(today, mostRecentDate) &&
+    !isDayBefore(today, mostRecentDate)
+  ) {
+    return 0;
+  }
+
+  // simply compute number of consecutive days when points were earned
+  let winningStreakSoFar = 1;
+  let lastDate = mostRecentDate;
+  for (let i = this.datesPoints.length - 2; i >= 0; --i) {
+    if (!isDayBefore(lastDate, this.datesPoints[i].date)) {
+      return winningStreakSoFar;
+    }
+    winningStreakSoFar++;
+    lastDate = this.datesPoints[i].date;
+  }
+  return winningStreakSoFar;
+});
+
 userSchema.set("toJSON", {
   virtuals: true,
   versionKey: false,
