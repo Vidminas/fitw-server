@@ -38,6 +38,10 @@ const worldSchemaDefinition: ModelDefinition<IWorld> = {
     type: String,
     required: true,
   },
+  creatorName: {
+    type: String,
+    required: true,
+  },
   background: String,
   fitwicks: [fitwickSchema],
 };

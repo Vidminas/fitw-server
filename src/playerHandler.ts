@@ -23,6 +23,7 @@ import {
   adminUpdateWorldCount,
   logServerMessage,
 } from "./adminHandler";
+import { Types } from "mongoose";
 
 interface LivePlayer {
   user: IUserDocument;
@@ -124,15 +125,17 @@ const modifyPlayerWorld = (
 };
 
 const findFitwick = (world: IWorld, fitwick: IFitwick) => {
-  return world.fitwicks.find(
+  return world.fitwicks?.find(
     (worldFitwick) => worldFitwick.worldId === fitwick.worldId
   );
 };
 
-const createWorld = async (worldName: string) => {
+const createWorld = async (worldName: string, creatorName: string) => {
   try {
     const newWorld = new worldModel({
+      id: Types.ObjectId(),
       name: worldName,
+      creatorName,
       background: "",
       fitwicks: [],
     });
@@ -232,7 +235,7 @@ const onEnterWorld = (socket: Socket) => async (
   if (!worldId || !liveWorlds.has(worldId)) {
     if (!worldId) {
       user.stats.createdWorlds++;
-      world = await createWorld(worldName);
+      world = await createWorld(worldName, user.username);
     } else {
       world = await loadWorld(worldId);
     }
@@ -277,7 +280,7 @@ const onEnterWorld = (socket: Socket) => async (
   // only set up a live player if successfully loaded both user and world
   livePlayers.set(socket.id, {
     user,
-    worldId,
+    worldId: world.id,
     // if the world was new (no ID), it gets added to the user worlds list
     userModified: !worldId,
   });
@@ -459,7 +462,11 @@ const onNewFitwick = (socket: Socket) => (fitwick: IFitwick) => {
   modifyPlayerWorld(
     socket,
     (world: IWorld) => {
-      world.fitwicks.push(fitwick);
+      if (world.fitwicks) {
+        world.fitwicks.push(fitwick);
+      } else {
+        world.fitwicks = [fitwick];
+      }
     },
     null,
     EVENT_DONE_FITWICK_NEW,
@@ -534,12 +541,14 @@ const onDeleteFitwick = (socket: Socket) => (fitwick: IFitwick) => {
   modifyPlayerWorld(
     socket,
     (world: IWorld) => {
-      world.fitwicks.splice(
-        world.fitwicks.findIndex(
-          (worldFitwick) => worldFitwick.worldId === fitwick.worldId
-        ),
-        1
-      );
+      if (world.fitwicks) {
+        world.fitwicks.splice(
+          world.fitwicks.findIndex(
+            (worldFitwick) => worldFitwick.worldId === fitwick.worldId
+          ),
+          1
+        );
+      }
     },
     null,
     EVENT_DONE_FITWICK_DELETE,
