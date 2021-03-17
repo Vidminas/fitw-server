@@ -6,6 +6,8 @@ import {
   SERVER_EVENT_LOG_MESSAGE,
   SERVER_EVENT_PLAYER_COUNT_CHANGED,
   SERVER_EVENT_TOMORROW,
+  SERVER_EVENT_VERBOSE_MODE_OFF,
+  SERVER_EVENT_VERBOSE_MODE_ON,
   SERVER_EVENT_WORLD_COUNT_CHANGED,
   SERVER_EVENT_YESTERDAY,
 } from "./serverEvents";
@@ -16,10 +18,13 @@ interface Message {
   username: string;
   date?: string;
   text: string;
+  verboseOnly?: boolean;
 }
 
 export const serverLogMessages: Message[] = [];
 let adminSocket: Socket | undefined = undefined;
+
+let verboseMode = false;
 
 export const logServerMessage = (message: Message) => {
   if (!message.date) {
@@ -30,9 +35,12 @@ export const logServerMessage = (message: Message) => {
     currentDate.setDate(serverDate.getDate());
     message.date = currentDate.toLocaleString();
   }
-  debug(`[${message.date}] ${message.username}: ${message.text}`);
-  serverLogMessages.unshift(message);
 
+  if (verboseMode || !message.verboseOnly) {
+    debug(`[${message.date}] ${message.username}: ${message.text}`);
+  }
+
+  serverLogMessages.unshift(message);
   if (adminSocket) {
     adminSocket.emit(SERVER_EVENT_LOG_MESSAGE, message);
   }
@@ -104,6 +112,23 @@ const registerAdminHandlers = (io: Server, socket: Socket) => {
         text: `changed server date to ${newDateString}`,
       });
       callback(newDateString);
+    });
+
+    socket.on(SERVER_EVENT_VERBOSE_MODE_ON, () => {
+      verboseMode = true;
+      logServerMessage({
+        username: "admin",
+        text: "enabled verbose mode",
+        verboseOnly: true,
+      });
+    });
+    socket.on(SERVER_EVENT_VERBOSE_MODE_OFF, () => {
+      verboseMode = false;
+      logServerMessage({
+        username: "admin",
+        text: "disabled verbose mode",
+        verboseOnly: true,
+      });
     });
   }
 };

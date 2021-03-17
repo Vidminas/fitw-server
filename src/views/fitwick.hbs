@@ -5,6 +5,9 @@
   socket.on("{{ events.SERVER_EVENT_LOG_MESSAGE }}", (message) => {
     const messageList = document.getElementById("messageList");
     const newMessage = document.createElement("li");
+    if (message.verboseOnly) {
+      newMessage.className = "verbose";
+    }
     newMessage.appendChild(document.createTextNode(`[${message.date}] ${message.username}: ${message.text}`));
     messageList.insertBefore(newMessage, messageList.firstChild);
   });
@@ -41,7 +44,36 @@
       document.getElementById("today").innerHTML = today;
     });
   }
+
+  const toggleVerboseMode = (checkbox) => {
+    if (checkbox.checked) {
+      socket.emit("{{ events.SERVER_EVENT_VERBOSE_MODE_ON }}");
+      for (const verboseMessage of document.getElementsByClassName("verbose")) {
+        verboseMessage.style.visibility = "visible";
+      }
+    } else {
+      socket.emit("{{ events.SERVER_EVENT_VERBOSE_MODE_OFF }}");
+      for (const verboseMessage of document.getElementsByClassName("verbose")) {
+        verboseMessage.style.visibility = "hidden";
+      }
+    }
+  }
 </script>
+
+<style>
+  body {
+    overflow-y: scroll;
+  }
+
+  .verbose {
+    display: none;
+  }
+
+  #verboseMode:checked+#messageList>.verbose {
+    display: list-item;
+  }
+</style>
+
 <h1>Fill In The World</h1>
 <section>
   <span>
@@ -68,11 +100,13 @@
   <button onclick="makeItYesterday()">Make it yesterday!</button>
 </section>
 <section>
-  <label>Server log:</label>
+  <span>Server log:</span>
   <a href="/fitwick/logs" download="server_logs.json">Download JSON</a>
+  <label>Verbose mode</label>
+  <input id="verboseMode" type="checkbox" onclick="toggleVerboseMode(this)" />
   <ul id="messageList">
     {{#each serverLogMessages}}
-    <li>[{{date}}] {{this.username}}: {{this.text}}</li>
+    <li {{#if this.verboseOnly}}class="verbose" {{/if}}>[{{this.date}}] {{this.username}}: {{this.text}}</li>
     {{/each}}
   </ul>
 </section>

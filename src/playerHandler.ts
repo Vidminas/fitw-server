@@ -68,11 +68,15 @@ export const disconnectAll = () => {
   adminUpdatePlayerCount();
 };
 
-const logPlayerMessage = (socket: Socket, message: string) => {
+const logPlayerMessage = (
+  socket: Socket,
+  message: string,
+  verboseOnly?: boolean
+) => {
   const username = livePlayers.has(socket.id)
     ? livePlayers.get(socket.id)?.user.username
     : socket.id;
-  logServerMessage({ username: username!, text: message });
+  logServerMessage({ username: username!, text: message, verboseOnly });
 };
 
 const modifyPlayerWorld = (
@@ -464,11 +468,13 @@ const onNewFitwick = (socket: Socket) => (fitwick: IFitwick) => {
 };
 
 const onMoveFitwick = (socket: Socket) => (fitwick: IFitwick) => {
-  // don't log fitwick moves because they are very many
-  // logMessage(
-  //   socket,
-  //   `moved fitwick ${fitwick.name} to [${fitwick.x},${fitwick.y}]`
-  // );
+  // there are very many fitwick moves, show them as verbose-only
+  logPlayerMessage(
+    socket,
+    `moved fitwick ${fitwick.name} to [${fitwick.x},${fitwick.y}]`,
+    true
+  );
+
   modifyPlayerWorld(
     socket,
     (world: IWorld) => {
@@ -510,6 +516,7 @@ const onPickUpFitwick = (socket: Socket) => (fitwick: IFitwick) => {
     `picked up fitwick ${fitwick.name} from [${fitwick.x},${fitwick.y}]`
   );
 
+  // this is not actually modifying the world, just sending the event to all other players
   modifyPlayerWorld(
     socket,
     (world: IWorld) => undefined,
