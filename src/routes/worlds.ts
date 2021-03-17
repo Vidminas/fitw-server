@@ -11,16 +11,18 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   debug("GET /" + (worldIDs ? "?id=" + worldIDs : ""));
   try {
     if (!worldIDs) {
-      return res.json(await worldModel.find());
+      return res.json(await worldModel.find().select("-fitwicks"));
     }
 
     const worldIdArr = (worldIDs as string).split(",");
     return res.json(
-      await worldModel.find({
-        _id: {
-          $in: worldIdArr,
-        },
-      })
+      await worldModel
+        .find({
+          _id: {
+            $in: worldIdArr,
+          },
+        })
+        .select("-fitwicks")
     );
   } catch (error) {
     next(error);
