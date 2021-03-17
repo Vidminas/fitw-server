@@ -69,6 +69,7 @@
 </section>
 <section>
   <label>Server log:</label>
+  <a href="/fitwick/logs" download="server_logs.json">Download JSON</a>
   <ul id="messageList">
     {{#each serverLogMessages}}
     <li>[{{date}}] {{this.username}}: {{this.text}}</li>

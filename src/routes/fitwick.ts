@@ -7,7 +7,7 @@ import { getToday } from "../time";
 const router = Router();
 
 /* GET the admin panel page. */
-router.get("/", function (req, res, next) {
+router.get("/", (req, res, next) => {
   res.render("fitwick", {
     numLivePlayers: livePlayers.size,
     numLiveWorlds: liveWorlds.size,
@@ -15,6 +15,16 @@ router.get("/", function (req, res, next) {
     serverLogMessages,
     events,
   });
+});
+
+router.get("/:command", (req, res, next) => {
+  const command = req.params.command;
+  switch (command) {
+    case "logs":
+      return res.json(serverLogMessages);
+    default:
+      return res.status(400).send("Unknown command!");
+  }
 });
 
 export default router;
