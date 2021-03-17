@@ -17,6 +17,19 @@
     document.getElementById("numLiveWorlds").innerHTML = newCount;
   });
 
+  let disconnectAllWarning = false;
+
+  const disconnectAll = () => {
+    if (!disconnectAllWarning) {
+      disconnectAllWarning = true;
+      document.getElementById("disconnectWarning").innerHTML = "Are you sure?";
+      return;
+    }
+    disconnectAllWarning = false;
+    document.getElementById("disconnectWarning").innerHTML = "";
+    socket.emit("{{ events.SERVER_EVENT_DISCONNECT_ALL }}");
+  }
+
   const makeItTomorrow = () => {
     socket.emit("{{ events.SERVER_EVENT_TOMORROW }}", (today) => {
       document.getElementById("today").innerHTML = today;
@@ -30,34 +43,35 @@
   }
 </script>
 <h1>Fill In The World</h1>
-<p>
+<section>
   <span>
-    You have reached the live Fill In The World Server.
-    There is nothing else to see here.
-    To play the game, please visit
+    This is the admin panel for the live Fill In The World Server.
+    Take care with these actions, they can mess up player data!
+    For example, changing dates in a non-linear way breaks the sorted array assumption.
+    The game client is hosted at:
   </span>
   <a href="https://fitw.azurewebsites.net/">https://fitw.azurewebsites.net/</a>
-</p>
-<p>
+</section>
+<section>
   <span>There are </span>
   <span id="numLivePlayers">{{numLivePlayers}}</span>
   <span> currently connected players in </span>
   <span id="numLiveWorlds">{{numLiveWorlds}}</span>
   <span> worlds.</span>
-</p>
-<p>
+  <button onclick="disconnectAll()">Disconnect everyone!</button>
+  <span id="disconnectWarning" style="color: red;"></span>
+</section>
+<section>
   <span>The current server date is </span>
   <span id="today">{{today}}</span>
-</p>
-<div>
   <button onclick="makeItTomorrow()">Make it tomorrow!</button>
   <button onclick="makeItYesterday()">Make it yesterday!</button>
-</div>
-<div>
+</section>
+<section>
   <label>Server log:</label>
   <ul id="messageList">
     {{#each serverLogMessages}}
     <li>[{{date}}] {{this.username}}: {{this.text}}</li>
     {{/each}}
   </ul>
-</div>
+</section>

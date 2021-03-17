@@ -23,7 +23,6 @@ import {
   adminUpdateWorldCount,
   logServerMessage,
 } from "./adminHandler";
-const debug = require("debug")("fitw-server:server");
 
 interface LivePlayer {
   user: IUserDocument;
@@ -41,6 +40,33 @@ interface LiveWorld {
 export const livePlayers = new Map<Socket["id"], LivePlayer>();
 // maps world ID to players currently in that world
 export const liveWorlds = new Map<IWorld["id"], LiveWorld>();
+// use with caution!!
+export const disconnectAll = () => {
+  liveWorlds.forEach((liveWorld) => {
+    for (const socket of liveWorld.playersInWorld) {
+      socket.emit(
+        EVENT_MESSAGE,
+        "danger",
+        "The server administrator has disconnected everyone"
+      );
+      // TODO: find out if this should close the underlying connection or not
+      socket.disconnect();
+    }
+    if (liveWorld.worldModified) {
+      saveWorld(liveWorld);
+    }
+  });
+  liveWorlds.clear();
+  adminUpdateWorldCount();
+
+  livePlayers.forEach((livePlayer) => {
+    if (livePlayer.userModified) {
+      saveUser(livePlayer);
+    }
+  });
+  livePlayers.clear();
+  adminUpdatePlayerCount();
+};
 
 const logPlayerMessage = (socket: Socket, message: string) => {
   const username = livePlayers.has(socket.id)
@@ -107,10 +133,16 @@ const createWorld = async (worldName: string) => {
       fitwicks: [],
     });
     await newWorld.save();
-    debug(`Created new world "${worldName}" in DB`);
+    logServerMessage({
+      username: "server",
+      text: `Created new world "${worldName}" in DB`,
+    });
     return newWorld;
   } catch (error) {
-    debug(`Error creating new world "${worldName}" in DB: ${error}`);
+    logServerMessage({
+      username: "server",
+      text: `Error creating new world "${worldName}" in DB: ${error}`,
+    });
   }
   return undefined;
 };
@@ -119,7 +151,10 @@ const loadWorld = async (worldId: IWorld["id"]) => {
   try {
     return await worldModel.findById(worldId);
   } catch (error) {
-    debug(`Error loading world with ID ${worldId} from DB: ${error}`);
+    logServerMessage({
+      username: "server",
+      text: `Error loading world with ID ${worldId} from DB: ${error}`,
+    });
   }
   return undefined;
 };
@@ -127,10 +162,16 @@ const loadWorld = async (worldId: IWorld["id"]) => {
 const saveWorld = async (liveWorld: LiveWorld) => {
   try {
     await liveWorld.world.save();
-    debug(`Updated world "${liveWorld.world.name}" in DB`);
+    logServerMessage({
+      username: "server",
+      text: `Updated world "${liveWorld.world.name}" in DB`,
+    });
     liveWorld.worldModified = false;
   } catch (error) {
-    debug(`Error saving world "${liveWorld.world.name}" to DB: ${error}`);
+    logServerMessage({
+      username: "server",
+      text: `Error saving world "${liveWorld.world.name}" to DB: ${error}`,
+    });
   }
 };
 
@@ -138,7 +179,10 @@ const loadUser = async (userId: IUser["id"]) => {
   try {
     return await userModel.findById(userId);
   } catch (error) {
-    debug(`Error loading user with ID ${userId} from DB: ${error}`);
+    logServerMessage({
+      username: "server",
+      text: `Error loading user with ID ${userId} from DB: ${error}`,
+    });
   }
   return undefined;
 };
@@ -146,10 +190,16 @@ const loadUser = async (userId: IUser["id"]) => {
 const saveUser = async (player: LivePlayer) => {
   try {
     await player.user.save();
-    debug(`Saved user "${player.user.username}" to DB`);
+    logServerMessage({
+      username: "server",
+      text: `Saved user "${player.user.username}" to DB`,
+    });
     player.userModified = false;
   } catch (error) {
-    debug(`Error saving user "${player.user.username}" to DB: ${error}`);
+    logServerMessage({
+      username: "server",
+      text: `Error saving user "${player.user.username}" to DB: ${error}`,
+    });
   }
 };
 

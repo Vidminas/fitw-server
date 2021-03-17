@@ -15,6 +15,7 @@ import {
 import { mongoOptions } from "./mongodb";
 
 import indexRouter from "./routes/index";
+import fitwickRouter from "./routes/fitwick";
 import usersRouter from "./routes/users";
 import worldsRouter from "./routes/worlds";
 
@@ -72,6 +73,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use("/", indexRouter);
+app.use("/fitwick", fitwickRouter);
 app.use("/users", usersRouter);
 app.use("/worlds", worldsRouter);
 
