@@ -19,6 +19,23 @@ const pointsSchema = new Schema(
   }
 );
 
+const statsSchema = new Schema(
+  {
+    createdWorlds: { type: Number, default: 0 },
+    createdTotalObjects: { type: Number, default: 0 },
+    createdUniqueObjects: { type: Number, default: 0 },
+    createdUniqueWinterObjects: { type: Number, default: 0 },
+    createdUniqueToolObjects: { type: Number, default: 0 },
+    createdUniqueCookingObjects: { type: Number, default: 0 },
+    createdUniqueElectronicsObjects: { type: Number, default: 0 },
+    createdUniqueDesertObjects: { type: Number, default: 0 },
+    createdUniqueTreeObjects: { type: Number, default: 0 },
+  },
+  {
+    _id: false,
+  }
+);
+
 const userSchemaDefinition: ModelDefinition<IUser> = {
   emailHash: {
     type: String,
@@ -47,15 +64,10 @@ const userSchemaDefinition: ModelDefinition<IUser> = {
   },
   datesPoints: [pointsSchema],
   stats: {
-    createdWorlds: { type: Number, default: 0 },
-    createdTotalObjects: { type: Number, default: 0 },
-    createdUniqueObjects: { type: Number, default: 0 },
-    createdUniqueWinterObjects: { type: Number, default: 0 },
-    createdUniqueToolObjects: { type: Number, default: 0 },
-    createdUniqueCookingObjects: { type: Number, default: 0 },
-    createdUniqueElectronicsObjects: { type: Number, default: 0 },
-    createdUniqueDesertObjects: { type: Number, default: 0 },
-    createdUniqueTreeObjects: { type: Number, default: 0 },
+    type: statsSchema,
+    // this trick is used to apply statsSchema defaults when stats is not provided
+    // see: https://mongoosejs.com/docs/subdocs.html
+    default: () => ({}),
   },
 };
 
