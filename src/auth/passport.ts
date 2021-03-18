@@ -11,6 +11,13 @@ import { Request, Response, NextFunction } from "express";
 const fitwEmailBanner = readFileSync("./public/FITW email banner.png").toString(
   "base64"
 );
+const bannerAttachment = {
+  filename: "FITW email banner.png",
+  type: "image/png",
+  content_id: "bannerImage",
+  content: fitwEmailBanner,
+  disposition: "inline",
+};
 
 export const authUrl = "/auth";
 export const loginUrl = "/login";
@@ -22,6 +29,7 @@ export const magicLogin = new MagicLoginStrategy({
     return sgMail
       .send({
         to: destination,
+        attachments: [bannerAttachment],
         from: process.env.SENDGRID_SENDER!,
         subject: "Fill In The World sign in",
         html: `<h1>Fill In The World</h1>
@@ -29,7 +37,7 @@ export const magicLogin = new MagicLoginStrategy({
         <h2>${verificationCode}</h2>
         <p>and then click the image below:</p>
         <a href="${process.env.CLIENT_URL}${confirmUrl}">
-        <img src="data:image/png;base64,${fitwEmailBanner}" alt="Fill In The World banner" />
+        <img src="cid:bannerImage" alt="Fill In The World banner" />
         </a>
         <p>Alternatively, if the image does not work, you can use this link instead:</p>
         <a href="${process.env.CLIENT_URL}${confirmUrl}">${process.env.CLIENT_URL}${confirmUrl}</a>`,
