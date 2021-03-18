@@ -6,3 +6,4 @@ export const SERVER_EVENT_WORLD_COUNT_CHANGED = "admin/world-count-changed";
 export const SERVER_EVENT_DISCONNECT_ALL = "admin/disconnect-all";
 export const SERVER_EVENT_VERBOSE_MODE_ON = "admin/verbose-mode-on";
 export const SERVER_EVENT_VERBOSE_MODE_OFF = "admin/verbose-mode-off";
+export const SERVER_EVENT_REGISTER_USER = "admin/register-user";

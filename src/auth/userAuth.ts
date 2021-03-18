@@ -22,23 +22,14 @@ export const verifyUserId = (userId: any) => {
   return User.findById(userId);
 };
 
-export const createUser = (email: string, username: string) => {
-  debug(`Creating new user ${username}`);
-  return verifyUserEmail(email)
-    .then((user) => {
-      if (user) {
-        throw new Error(`User with this email address already exists!`);
-      }
+export const createUser = async (email: string, username: string) => {
+  const user = await verifyUserEmail(email);
+  if (user) {
+    throw new Error(`User with this email address already exists!`);
+  }
 
-      const salt = bcrypt.genSaltSync();
-      const emailHash = bcrypt.hashSync(email, salt);
-      const newUser = new User({ emailHash, username });
-      return newUser
-        .save()
-        .then(() => debug(`Created new user ${username}`))
-        .catch((error) =>
-          debug(`Error creating new user ${username}: ${error}`)
-        );
-    })
-    .catch((error) => debug(error));
+  const salt = bcrypt.genSaltSync();
+  const emailHash = bcrypt.hashSync(email, salt);
+  const newUser = new User({ emailHash, username });
+  return await newUser.save();
 };

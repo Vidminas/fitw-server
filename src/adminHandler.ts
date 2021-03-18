@@ -1,10 +1,12 @@
 import { Server, Socket } from "socket.io";
 import { EVENT_DISCONNECT } from "./api/events";
+import { createUser } from "./auth/userAuth";
 import { disconnectAll, livePlayers, liveWorlds } from "./playerHandler";
 import {
   SERVER_EVENT_DISCONNECT_ALL,
   SERVER_EVENT_LOG_MESSAGE,
   SERVER_EVENT_PLAYER_COUNT_CHANGED,
+  SERVER_EVENT_REGISTER_USER,
   SERVER_EVENT_TOMORROW,
   SERVER_EVENT_VERBOSE_MODE_OFF,
   SERVER_EVENT_VERBOSE_MODE_ON,
@@ -24,7 +26,7 @@ interface Message {
 export const serverLogMessages: Message[] = [];
 let adminSocket: Socket | undefined = undefined;
 
-let verboseMode = false;
+export let verboseMode = false;
 
 export const logServerMessage = (message: Message) => {
   if (!message.date) {
@@ -89,6 +91,30 @@ const registerAdminHandlers = (io: Server, socket: Socket) => {
       });
       disconnectAll();
     });
+
+    socket.on(
+      SERVER_EVENT_REGISTER_USER,
+      async (
+        email: string,
+        username: string,
+        callback: (status: string) => void
+      ) => {
+        try {
+          await createUser(email, username);
+          logServerMessage({
+            username: "admin",
+            text: `Created new user "${username}" in DB`,
+          });
+          callback("Success!");
+        } catch (error) {
+          logServerMessage({
+            username: "admin",
+            text: `Error creating new user "${username}": ${error}`,
+          });
+          callback("Encountered an error! See server log for details...");
+        }
+      }
+    );
 
     socket.on(SERVER_EVENT_TOMORROW, (callback: (today: string) => void) => {
       const oldDateString = getToday().toLocaleString();

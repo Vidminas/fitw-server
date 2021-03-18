@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { livePlayers, liveWorlds } from "../playerHandler";
-import { serverLogMessages } from "../adminHandler";
+import { serverLogMessages, verboseMode } from "../adminHandler";
 import * as events from "../serverEvents";
 import { getToday } from "../time";
 
@@ -13,6 +13,7 @@ router.get("/", (req, res, next) => {
     numLiveWorlds: liveWorlds.size,
     today: getToday().toLocaleDateString(),
     serverLogMessages,
+    verboseMode,
     events,
   });
 });

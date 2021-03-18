@@ -8,7 +8,8 @@
     if (message.verboseOnly) {
       newMessage.className = "verbose";
     }
-    newMessage.appendChild(document.createTextNode(`[${message.date}] ${message.username}: ${message.text}`));
+    const messageText = document.createTextNode(`[${message.date}] ${message.username}: ${message.text}`)
+    newMessage.appendChild(messageText);
     messageList.insertBefore(newMessage, messageList.firstChild);
   });
 
@@ -19,6 +20,26 @@
   socket.on("{{ events.SERVER_EVENT_WORLD_COUNT_CHANGED }}", (newCount) => {
     document.getElementById("numLiveWorlds").innerHTML = newCount;
   });
+
+  let isRegisterModalOpen = false;
+
+  const toggleRegisterModal = () => {
+    isRegisterModalOpen = !isRegisterModalOpen;
+    const modal = document.getElementById("registerModal");
+    modal.style.display = isRegisterModalOpen ? "block" : "none";
+  };
+
+  const submitRegisterForm = (event) => {
+    // don't redirect anywhere on submission
+    event.preventDefault();
+    const email = event.target.elements.email.value;
+    const username = event.target.elements.username.value;
+    document.getElementById("registerStatus").innerHTML = "Loading...";
+
+    socket.emit("{{ events.SERVER_EVENT_REGISTER_USER }}", email, username, (status) => {
+      document.getElementById("registerStatus").innerHTML = status;
+    });
+  };
 
   let disconnectAllWarning = false;
 
@@ -31,7 +52,7 @@
     disconnectAllWarning = false;
     document.getElementById("disconnectWarning").innerHTML = "";
     socket.emit("{{ events.SERVER_EVENT_DISCONNECT_ALL }}");
-  }
+  };
 
   const makeItTomorrow = () => {
     socket.emit("{{ events.SERVER_EVENT_TOMORROW }}", (today) => {
@@ -43,7 +64,7 @@
     socket.emit("{{ events.SERVER_EVENT_YESTERDAY }}", (today) => {
       document.getElementById("today").innerHTML = today;
     });
-  }
+  };
 
   const toggleVerboseMode = (checkbox) => {
     if (checkbox.checked) {
@@ -57,7 +78,7 @@
         verboseMessage.style.visibility = "hidden";
       }
     }
-  }
+  };
 </script>
 
 <style>
@@ -72,6 +93,51 @@
   #verboseMode:checked+#messageList>.verbose {
     display: list-item;
   }
+
+  .modal {
+    display: none;
+    /* Hidden by default */
+    position: fixed;
+    /* Stay in place */
+    z-index: 1;
+    /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%;
+    /* Full width */
+    height: 100%;
+    /* Full height */
+    overflow: auto;
+    /* Enable scroll if needed */
+    background-color: rgb(0, 0, 0);
+    /* Fallback color */
+    background-color: rgba(0, 0, 0, 0.4);
+    /* Black w/ opacity */
+  }
+
+  .modalContent {
+    background-color: #fefefe;
+    margin: 15% auto;
+    /* 15% from the top and centered */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    /* Could be more or less, depending on screen size */
+  }
+
+  .closeModalButton {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+  }
+
+  .closeModalButton:hover,
+  .closeModalButton:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+  }
 </style>
 
 <h1>Fill In The World</h1>
@@ -83,6 +149,22 @@
     The game client is hosted at:
   </span>
   <a href="https://fitw.azurewebsites.net/">https://fitw.azurewebsites.net/</a>
+</section>
+<section>
+  <button onclick="toggleRegisterModal()">Register a new user</button>
+  <article id="registerModal" class="modal">
+    <article id="registerModalContent" class="modalContent">
+      <button class="closeModalButton" onclick="toggleRegisterModal()">&times;</button>
+      <form onsubmit="submitRegisterForm(event)">
+        <label for="email">Email address</label>
+        <input name="email" type="email" required="required" />
+        <label for="username">Username</label>
+        <input name="username" type="text" required="required" />
+        <button type="submit">Save this user to DB</button>
+        <p id="registerStatus"></p>
+      </form>
+    </article>
+  </article>
 </section>
 <section>
   <span>There are </span>
@@ -103,7 +185,8 @@
   <span>Server log:</span>
   <a href="/fitwick/logs" download="server_logs.json">Download JSON</a>
   <label>Verbose mode</label>
-  <input id="verboseMode" type="checkbox" onclick="toggleVerboseMode(this)" />
+  <input id="verboseMode" type="checkbox" onclick="toggleVerboseMode(this)" {{#if verboseMode}}checked="checked"
+    {{/if}} />
   <ul id="messageList">
     {{#each serverLogMessages}}
     <li {{#if this.verboseOnly}}class="verbose" {{/if}}>[{{this.date}}] {{this.username}}: {{this.text}}</li>
