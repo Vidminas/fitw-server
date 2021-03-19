@@ -3,6 +3,7 @@ import { EVENT_DISCONNECT } from "./api/events";
 import { createUser } from "./auth/userAuth";
 import { disconnectAll, livePlayers, liveWorlds } from "./playerHandler";
 import {
+  SERVER_EVENT_ADMIN_KICKED,
   SERVER_EVENT_DISCONNECT_ALL,
   SERVER_EVENT_LOG_MESSAGE,
   SERVER_EVENT_PLAYER_COUNT_CHANGED,
@@ -74,6 +75,7 @@ const registerAdminHandlers = (io: Server, socket: Socket) => {
         username: "admin",
         text: `second admin attempted to connect from ${socket.handshake.headers.host}! Kicking the second connection`,
       });
+      socket.emit(SERVER_EVENT_ADMIN_KICKED);
       socket.disconnect(true);
       return;
     }

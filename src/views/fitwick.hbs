@@ -21,6 +21,10 @@
     document.getElementById("numLiveWorlds").innerHTML = newCount;
   });
 
+  socket.on("{{ events.SERVER_EVENT_ADMIN_KICKED }}", () => {
+    document.getElementById("adminKickedModal").style.display = "block";
+  });
+
   let isRegisterModalOpen = false;
 
   const toggleRegisterModal = () => {
@@ -138,9 +142,21 @@
     text-decoration: none;
     cursor: pointer;
   }
+
+  #adminKickedModal {
+    font-size: large;
+    font-weight: bold;
+    color: orangered;
+  }
 </style>
 
 <h1>Fill In The World</h1>
+<section id="adminKickedModal" class="modal">
+  <article class="modalContent">
+    <p>Another admin is already connected, only one admin is allowed at a time (to prevent breaking the game)!</p>
+    <p>Please ask them to disconnect first, then reload this page.</p>
+  </article>
+</section>
 <section>
   <span>
     This is the admin panel for the live Fill In The World Server.
@@ -152,7 +168,7 @@
 </section>
 <section>
   <button onclick="toggleRegisterModal()">Register a new user</button>
-  <article id="registerModal" class="modal">
+  <section id="registerModal" class="modal">
     <article id="registerModalContent" class="modalContent">
       <button class="closeModalButton" onclick="toggleRegisterModal()">&times;</button>
       <form onsubmit="submitRegisterForm(event)">
@@ -164,7 +180,7 @@
         <p id="registerStatus"></p>
       </form>
     </article>
-  </article>
+  </section>
 </section>
 <section>
   <span>There are </span>
