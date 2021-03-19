@@ -1,4 +1,3 @@
-const debug = require("debug")("fitw-server:auth");
 import bcrypt from "bcrypt";
 import User from "../models/user";
 

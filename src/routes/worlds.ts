@@ -1,5 +1,6 @@
 const debug = require("debug")("fitw-server:routes/worlds");
 import { Request, Response, NextFunction, Router } from "express";
+import { logServerMessage } from "../adminHandler";
 import worldModel from "../models/world";
 
 const router = Router();
@@ -8,7 +9,13 @@ const router = Router();
 // see https://stackoverflow.com/questions/9371195/rest-api-requesting-multiple-resources-in-a-single-get
 router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   const worldIDs = req.query.id;
-  debug("GET /" + (worldIDs ? "?id=" + worldIDs : ""));
+  logServerMessage(
+    {
+      username: "routes/worlds",
+      text: `GET /${worldIDs ? "?id=" + worldIDs : ""}`,
+    },
+    debug
+  );
   try {
     if (!worldIDs) {
       return res.json(await worldModel.find().select("-fitwicks"));
@@ -34,7 +41,13 @@ router.get(
   "/:worldId",
   async (req: Request, res: Response, next: NextFunction) => {
     const worldId = req.params.worldId;
-    debug("GET /" + worldId);
+    logServerMessage(
+      {
+        username: "routes/worlds",
+        text: `GET /${worldId}`,
+      },
+      debug
+    );
     try {
       const world = await worldModel.findById(worldId);
       if (world) {
@@ -51,8 +64,17 @@ router.delete(
   "/:worldId",
   async (req: Request, res: Response, next: NextFunction) => {
     const worldId = req.params.worldId;
-    debug(`DELETE /${worldId}`);
-    next({ status: 500, message: "World deletion is not implemented yet!" });
+    logServerMessage(
+      {
+        username: "routes/worlds",
+        text: `DELETE /${worldId}`,
+      },
+      debug
+    );
+    return next({
+      status: 500,
+      message: "World deletion is not implemented yet!",
+    });
   }
 );
 
@@ -66,7 +88,13 @@ router.use((error: any, req: Request, res: Response, next: NextFunction) => {
   const message =
     error.message ||
     "Something went wrong, please report this to the developers";
-  debug(message);
+  logServerMessage(
+    {
+      username: "routes/worlds",
+      text: message,
+    },
+    debug
+  );
   return res.status(statusCode).send(message);
 });
 

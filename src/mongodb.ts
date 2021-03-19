@@ -4,6 +4,7 @@
  */
 const debug = require("debug")("fitw-server:mongodb");
 import mongoose from "mongoose";
+import { logServerMessage } from "./adminHandler";
 
 let connected = false;
 
@@ -26,20 +27,39 @@ export const initializeDB = () => {
     })
     .then((m) => {
       connected = true;
-      debug("Successfully initialised MongoDB database");
+      logServerMessage(
+        {
+          username: "mongodb",
+          text: "Successfully initialised MongoDB database",
+        },
+        debug
+      );
       return m.connection.getClient();
     })
     .catch((error) => {
       connected = false;
-      debug("Failed to initialise database because:");
-      debug(error);
+      logServerMessage(
+        {
+          username: "mongodb",
+          text: `Failed to initialise database because: ${
+            error.message || error.toString()
+          }`,
+        },
+        debug
+      );
     });
 };
 
 const disconnectDB = () => {
   if (connected) {
     mongoose.connection.close(function () {
-      debug("Disconnected from MongoDB on app termination");
+      logServerMessage(
+        {
+          username: "mongodb",
+          text: "Disconnected from MongoDB on app termination",
+        },
+        debug
+      );
       process.exit(0);
     });
   }

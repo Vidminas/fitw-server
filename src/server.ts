@@ -16,7 +16,7 @@ import { Server, Socket } from "socket.io";
 import app from "./app";
 import { initializeDB } from "./mongodb";
 import registerPlayerHandlers from "./playerHandler";
-import registerAdminHandlers from "./adminHandler";
+import registerAdminHandlers, { logServerMessage } from "./adminHandler";
 
 /**
  * Test connection to the database and ensure the users table exists
@@ -110,5 +110,11 @@ function onError(error: { syscall: string; code: any }) {
 function onListening() {
   const addr = httpServer.address();
   const bind = typeof addr === "string" ? "pipe " + addr : "port " + addr!.port;
-  debug("Listening on " + bind);
+  logServerMessage(
+    {
+      username: "server",
+      text: `Server started. Listening on ${bind}`,
+    },
+    debug
+  );
 }

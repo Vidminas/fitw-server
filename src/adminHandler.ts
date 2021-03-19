@@ -28,7 +28,7 @@ let adminSocket: Socket | undefined = undefined;
 
 export let verboseMode = false;
 
-export const logServerMessage = (message: Message) => {
+export const logServerMessage = (message: Message, debugMethod?: any) => {
   if (!message.date) {
     const currentDate = new Date();
     const serverDate = getToday();
@@ -38,8 +38,12 @@ export const logServerMessage = (message: Message) => {
     message.date = currentDate.toLocaleString();
   }
 
+  if (!debugMethod) {
+    debugMethod = debug;
+  }
+
   if (verboseMode || !message.verboseOnly) {
-    debug(`[${message.date}] ${message.username}: ${message.text}`);
+    debugMethod(`[${message.date}] ${message.username}: ${message.text}`);
   }
 
   serverLogMessages.unshift(message);

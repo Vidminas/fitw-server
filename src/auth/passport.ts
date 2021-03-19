@@ -7,14 +7,16 @@ import { verifyUserId, verifyUserEmail } from "./userAuth";
 import userModel, { IUserDocument } from "../models/user";
 import { Schema } from "mongoose";
 import { Request, Response, NextFunction } from "express";
+import { logServerMessage } from "../adminHandler";
 
 const fitwEmailBanner = readFileSync("./public/FITW email banner.png").toString(
   "base64"
 );
+const bannerCID = "bannerImage";
 const bannerAttachment = {
   filename: "FITW email banner.png",
   type: "image/png",
-  content_id: "bannerImage",
+  content_id: bannerCID,
   content: fitwEmailBanner,
   disposition: "inline",
 };
@@ -37,36 +39,85 @@ export const magicLogin = new MagicLoginStrategy({
         <h2>${verificationCode}</h2>
         <p>and then click the image below:</p>
         <a href="${process.env.CLIENT_URL}${confirmUrl}">
-        <img src="cid:bannerImage" alt="Fill In The World banner" />
+        <img src="cid:${bannerCID}" alt="Fill In The World banner" />
         </a>
         <p>Alternatively, if the image does not work, you can use this link instead:</p>
         <a href="${process.env.CLIENT_URL}${confirmUrl}">${process.env.CLIENT_URL}${confirmUrl}</a>`,
       })
       .then((clientResponse) =>
-        debug(`Sent magic link and got "${clientResponse}"`)
+        logServerMessage(
+          {
+            username: "magic link auth",
+            text: `Sent magic link and got "${clientResponse[0]}"`,
+          },
+          debug
+        )
       )
-      .catch((error) => debug(`Error sending magic link: ${error}`));
+      .catch((error) =>
+        logServerMessage(
+          {
+            username: "magic link auth",
+            text: `Error sending magic link: ${error}`,
+          },
+          debug
+        )
+      );
   },
   verify: (payload, done) => {
-    debug("Verifying new user login");
+    logServerMessage(
+      {
+        username: "magic link auth",
+        text: "Verifying new user login",
+      },
+      debug
+    );
+
     if (!payload.destination) {
-      debug("But the supplied POST data is invalid - link expired!");
-      return done(undefined, false, { message: "Authentication link expired" });
+      logServerMessage(
+        {
+          username: "magic link auth",
+          text:
+            "But the supplied POST data is invalid - link wrong or expired!",
+        },
+        debug
+      );
+      return done(undefined, false, {
+        message: "Authentication link wrong or expired",
+      });
     }
 
     verifyUserEmail(payload.destination)
       .then((user) => {
         if (!user) {
-          debug("No such registered user found!");
+          logServerMessage(
+            {
+              username: "magic link auth",
+              text: "User email address not registered!",
+            },
+            debug
+          );
           return done(undefined, false, {
             message: "Email address not registered",
           });
+        } else {
+          logServerMessage(
+            {
+              username: "magic link auth",
+              text: `Successfully validated user ${user.username}`,
+            },
+            debug
+          );
+          return done(undefined, user);
         }
-        debug(`Successfully validated user ${user.username}`);
-        return done(undefined, user);
       })
       .catch((error) => {
-        debug(error);
+        logServerMessage(
+          {
+            username: "magic link auth",
+            text: error.message || error.toString(),
+          },
+          debug
+        );
         done(error);
       });
   },
@@ -106,8 +157,15 @@ export const authenticateToken = (
 
 export const authenticateUser = (req: Request, res: Response) => {
   if (!req.body.id) {
-    debug("Received invalid locally cached user request with body:");
-    debug(req.body);
+    logServerMessage(
+      {
+        username: "local user auth",
+        text: `Received invalid locally cached user request with body: ${JSON.stringify(
+          req.body
+        )}`,
+      },
+      debug
+    );
     res.status(400).json({
       error: {
         message:
@@ -117,19 +175,45 @@ export const authenticateUser = (req: Request, res: Response) => {
     return;
   }
 
-  debug(`Verifying locally cached user with ID ${req.body.id}`);
+  logServerMessage(
+    {
+      username: "local user auth",
+      text: `Verifying locally cached user with ID ${req.body.id}`,
+    },
+    debug
+  );
   verifyUserId(req.body.id)
     .then((dbUser) => {
       if (dbUser) {
-        debug(`Successfully validated user ${dbUser.username}`);
+        logServerMessage(
+          {
+            username: "local user auth",
+            text: `Successfully validated user ${dbUser.username}`,
+          },
+          debug
+        );
         res.status(200).json(dbUser);
       } else {
+        logServerMessage(
+          {
+            username: "local user auth",
+            text: "No such user found in server database!",
+          },
+          debug
+        );
         res.status(401).json({
           error: { message: "No such user found in server database!" },
         });
       }
     })
     .catch((error) => {
+      logServerMessage(
+        {
+          username: "local user auth",
+          text: error.message || error.toString(),
+        },
+        debug
+      );
       res.status(401).json({ error: error });
     });
 };
