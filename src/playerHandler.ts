@@ -211,6 +211,10 @@ const saveUser = async (player: LivePlayer) => {
   }
 };
 
+const onMessage = (socket: Socket) => (color: string, message: string) => {
+  logPlayerMessage(socket, `${color}: ${message}`);
+};
+
 const onBrowserEvent = (socket: Socket) => (message: string) => {
   logPlayerMessage(socket, `Browser event: ${message}`);
 };
@@ -571,6 +575,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
 
   logPlayerMessage(socket, "connected");
 
+  socket.on(EVENT_MESSAGE, onMessage(socket));
   socket.on(EVENT_BROWSER_MESSAGE, onBrowserEvent(socket));
   socket.on(EVENT_WORLD_ENTER, onEnterWorld(socket));
   socket.on(EVENT_WORLD_EXIT, onExitWorld(socket));
