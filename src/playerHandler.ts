@@ -13,6 +13,7 @@ import {
   EVENT_FITWICK_PICK_UP,
   EVENT_DONE_FITWICK_DELETE,
   EVENT_MESSAGE,
+  EVENT_BROWSER_MESSAGE,
 } from "./api/events";
 import worldModel, { IWorldDocument } from "./models/world";
 import userModel, { IUserDocument } from "./models/user";
@@ -208,6 +209,10 @@ const saveUser = async (player: LivePlayer) => {
       text: `Error saving user "${player.user.username}" to DB: ${error}`,
     });
   }
+};
+
+const onBrowserEvent = (socket: Socket) => (message: string) => {
+  logPlayerMessage(socket, `Browser event: ${message}`);
 };
 
 const onEnterWorld = (socket: Socket) => async (
@@ -566,6 +571,7 @@ const registerPlayerHandlers = (io: Server, socket: Socket) => {
 
   logPlayerMessage(socket, "connected");
 
+  socket.on(EVENT_BROWSER_MESSAGE, onBrowserEvent(socket));
   socket.on(EVENT_WORLD_ENTER, onEnterWorld(socket));
   socket.on(EVENT_WORLD_EXIT, onExitWorld(socket));
   socket.on(EVENT_DISCONNECT, onDisconnected(socket));
