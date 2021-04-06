@@ -2,7 +2,7 @@ export enum FitwickTheme {
   WINTER,
   TOOLS,
   COOKING,
-  ELETRONICS,
+  ELECTRONICS,
   DESERT,
   TREES,
 }
@@ -65,22 +65,22 @@ FITWICKS.set("toaster", [FitwickTheme.COOKING]);
 FITWICKS.set("coffee machine", [FitwickTheme.COOKING]);
 FITWICKS.set("rolling pin", [FitwickTheme.COOKING]);
 
-FITWICKS.set("monitor", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("computer", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("keyboard", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("mouse", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("tablet", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("remote", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("mobile phone", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("music player", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("USB", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("calculator", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("motherboard", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("RAM", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("graphics card", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("joystick", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("controller", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("microphone", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("headphones", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("CD", [FitwickTheme.ELETRONICS]);
-FITWICKS.set("cursor", [FitwickTheme.ELETRONICS]);
+FITWICKS.set("monitor", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("computer", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("keyboard", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("mouse", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("tablet", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("remote", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("mobile phone", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("music player", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("USB", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("calculator", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("motherboard", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("RAM", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("graphics card", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("joystick", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("controller", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("microphone", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("headphones", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("CD", [FitwickTheme.ELECTRONICS]);
+FITWICKS.set("cursor", [FitwickTheme.ELECTRONICS]);

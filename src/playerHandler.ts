@@ -446,7 +446,7 @@ const onNewFitwick = (socket: Socket) => (fitwick: IFitwick) => {
         if (fitwickThemes.includes(FitwickTheme.DESERT)) {
           livePlayer.user.stats.createdUniqueDesertObjects++;
         }
-        if (fitwickThemes.includes(FitwickTheme.ELETRONICS)) {
+        if (fitwickThemes.includes(FitwickTheme.ELECTRONICS)) {
           livePlayer.user.stats.createdUniqueElectronicsObjects++;
         }
         if (fitwickThemes.includes(FitwickTheme.TOOLS)) {
