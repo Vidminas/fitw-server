@@ -16,11 +16,11 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
     },
     debug
   );
-  try {
-    if (!worldIDs) {
-      return res.json(await worldModel.find().select("-fitwicks"));
-    }
+  if (!worldIDs) {
+    return res.json([]);
+  }
 
+  try {
     const worldIdArr = (worldIDs as string).split(",");
     return res.json(
       await worldModel
